@@ -8,6 +8,12 @@
 - Current DCASE baseline is Harada et al. (EUSIPCO 2023), not MobileNetV2.
 - Transformer survey architectures are related-work citations only — not swap candidates.
 - Drone-deployable track deprioritized to optional appendix; factory track is the sole primary focus. Scope deliberately held to proven components to stay executable in the timeline.
+- Codebase layout mirrors the sibling `bicafe` project, directly under `src/` (no nested package): architecture config in `src/config.py`, training config/loop in `src/pipelines/`, callbacks in `src/callbacks/`, model pieces in `src/modules/`.
+- STgram-MFN is a faithful re-expression of the reference `net.py` (github.com/liuyoude/STgram-MFN); the reference's hardcoded `313` LayerNorm width, `(8,20)` collapse kernel, and `128` embedding width are lifted into `STgramMFNConfig` rather than left implicit.
+- Audio is loaded with `soundfile`, not `torchaudio.load` — torchaudio >= 2.11 requires the separate TorchCodec package for loading, which is avoided.
+- Best-epoch selection uses the official DCASE test set (reference behavior) via `BestCheckpoint(monitor="auc")`. This is test-set selection and is flagged as a methodological caveat; a held-out normal `val_fraction` path exists for a leak-free `val_loss` if the protocol is tightened later.
+- INT8 PTQ is done through ONNX Runtime (`scripts/quantize_onnx.py`): dynamic-weight quantization by default, calibrated static (QDQ) preferred for accuracy. TFLite Micro requires full-integer quantization, so the dynamic ONNX INT8 file is not a direct TFLite input.
+- First measured INT8 result: dynamic-weight ONNX INT8 is smaller (1.23 MB vs 4.56 MB) but ~3.5x SLOWER than fp32 on CPU (149 ms vs 42 ms) — expected for dynamically-quantized convnets; this motivates the static QDQ path, not a conclusion about the architecture.
 
 ## Reporting conventions
 
@@ -19,7 +25,7 @@ Empirical ML systems idiom — experimental conditions, ablations, descriptive m
 - Scholarship Statement of Purpose — not started
 - Related Work synthesis — not started
 - ESP32 hardware — acquisition agreed, not yet in hand
-- Sprint 1 (M1 Baseline Reproduction) — not yet started
+- Sprint 1 (M1 Baseline Reproduction) — in progress: STgram-MFN reference backbone implemented (model, data, train/eval/infer, edge export/quantize scripts). Awaiting dataset download + training run to reproduce published AUC/pAUC.
 
 ## Non-goals
 

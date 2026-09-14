@@ -164,3 +164,8 @@ cython_debug/
 
 data/
 checkpoints/
+results/
+export/
+wandb/
+*.onnx
+*.tflite

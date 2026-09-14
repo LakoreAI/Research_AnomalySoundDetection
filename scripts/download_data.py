@@ -1,0 +1,151 @@
+"""Download the anomaly-detection datasets used by this project.
+
+Sources are resolved live from the Zenodo REST API (record -> file list), so
+nothing here hardcodes a stale download URL. Verified records:
+
+    mimii          MIMII raw dataset (fan/pump/slider/valve, per-SNR zips)
+    dcase2020      DCASE 2020 Task 2 development set  -> <machine>/{train,test}
+    dcase2020-eval DCASE 2020 Task 2 additional train + evaluation set
+    dcase2022      DCASE 2022 Task 2 development set (MIMII DG-style, 7 machines)
+
+The DCASE zips already extract into the `<machine>/<split>/` layout the training
+code expects. Raw MIMII does NOT — run `scripts/prepare_data.py --reorganize`
+afterwards to convert it to DCASE-style filenames.
+
+Usage:
+    uv run python scripts/download_data.py --dataset dcase2020 --dest data/raw
+    uv run python scripts/download_data.py --dataset dcase2020-eval --dest data/raw_eval
+    uv run python scripts/download_data.py --dataset mimii --snr 0 --dest data/mimii
+    uv run python scripts/download_data.py --list --dataset dcase2020
+"""
+
+import argparse
+import sys
+import urllib.request
+import zipfile
+from pathlib import Path
+from typing import Dict, List
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+# Zenodo record ids, verified via https://zenodo.org/api/records/<id>.
+RECORDS: Dict[str, int] = {
+    "mimii": 3384388,
+    "dcase2020": 3678171,
+    "dcase2020-eval-train": 3727685,
+    "dcase2020-eval-test": 3841772,
+}
+# DCASE 2022 Task 2 development set (MIMII DG + ToyADMOS2; machine types are
+# fan, gearbox, bearing, slider, ToyCar, ToyTrain, valve — NOT the 2020 set).
+DCASE2022_RECORD = 6355122
+
+ALL_MACHINES = ["fan", "pump", "slider", "valve", "ToyCar", "ToyConveyor"]
+
+
+def zenodo_files(record: int) -> List[dict]:
+    """Return the file list for a Zenodo record via its JSON API."""
+    url = f"https://zenodo.org/api/records/{record}"
+    with urllib.request.urlopen(url) as resp:
+        import json
+
+        data = json.load(resp)
+    return data.get("files", [])
+
+
+def download(url: str, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        print(f"  exists, skipping: {dest.name}")
+        return
+    print(f"  downloading {dest.name} ...")
+
+    def hook(block_num, block_size, total_size):
+        if total_size > 0:
+            pct = min(100, block_num * block_size * 100 // total_size)
+            print(f"\r    {pct:3d}%", end="", flush=True)
+
+    urllib.request.urlretrieve(url, dest, reporthook=hook)
+    print()
+
+
+def extract(zip_path: Path, dest: Path) -> None:
+    print(f"  extracting {zip_path.name} -> {dest}")
+    dest.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(dest)
+
+
+def select_files(files: List[dict], machines: List[str], snr: str = None) -> List[dict]:
+    selected = []
+    for f in files:
+        key = f["key"]
+        if not key.endswith(".zip"):
+            continue
+        if machines and not any(m in key for m in machines):
+            continue
+        if snr is not None and f"{snr}_dB" not in key:
+            continue
+        selected.append(f)
+    return selected
+
+
+def url_for(f: dict) -> str:
+    """Zenodo's own download link for a file entry."""
+    links = f.get("links", {})
+    return links.get("self") or links["content"]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--dataset",
+        choices=["mimii", "dcase2020", "dcase2020-eval", "dcase2022"],
+        default="dcase2020",
+    )
+    parser.add_argument("--dest", type=Path, default=REPO_ROOT / "data" / "raw")
+    parser.add_argument("--machines", nargs="*", default=None)
+    parser.add_argument(
+        "--snr", choices=["6", "0", "-6"], default=None, help="MIMII SNR level"
+    )
+    parser.add_argument(
+        "--list", action="store_true", help="list files, download nothing"
+    )
+    parser.add_argument(
+        "--keep-archives", action="store_true", help="keep downloaded .zip files"
+    )
+    args = parser.parse_args()
+
+    machines = args.machines or []
+    if args.dataset == "dcase2020-eval":
+        records = [
+            (RECORDS["dcase2020-eval-train"], "train"),
+            (RECORDS["dcase2020-eval-test"], "test"),
+        ]
+    elif args.dataset == "dcase2022":
+        records = [(DCASE2022_RECORD, None)]
+    else:
+        records = [(RECORDS[args.dataset], None)]
+
+    archives_dir = args.dest / "_archives"
+    for record, _split in records:
+        files = zenodo_files(record)
+        selected = select_files(files, machines, args.snr)
+        print(f"record {record}: {len(selected)} file(s) selected")
+        for f in selected:
+            print(f"  {f['key']}  ({f['size'] / 1e9:.2f} GB)")
+        if args.list:
+            continue
+        for f in selected:
+            zip_path = archives_dir / f["key"]
+            download(url_for(f), zip_path)
+            extract(zip_path, args.dest)
+            if not args.keep_archives:
+                zip_path.unlink()
+
+    print(f"\ndone. data under {args.dest}")
+    print("next: uv run python scripts/prepare_data.py --root", args.dest, "--check")
+
+
+if __name__ == "__main__":
+    main()

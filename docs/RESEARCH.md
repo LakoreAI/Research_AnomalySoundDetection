@@ -23,19 +23,23 @@ Output target: scholarship application (4–6 month timeline).
 
 ## Repo structure
 
-> TBD — fill in once code exists. Suggested starting layout:
+Mirrors the layout of the sibling `bicafe` codebase: architecture config in
+`src/config.py`, training config + loop under `src/pipelines/`, reusable
+callbacks under `src/callbacks/`, model pieces under `src/modules/`.
 
 ```
-.
-├── configs/          # experiment configs per condition (backbone × quant × dataset)
-├── data/              # dataset prep scripts (MIMII, DCASE T2, MIMII DG, ToyADMOS2)
-├── src/            # STgram-MFN, mn01 wrapper, MobileFaceNet+ArcFace head
-├── ├── eval/              # AUC/pAUC scoring, comparison matrix aggregation
-├── quantization/       # PTQ/QAT + TFLite Micro conversion
-├── docs/
-│   ├── REFERENCE.md
-│   └── NOTES.md
-└── results/           # per-run logs, summary tables
+src/
+├── config.py          # STgramMFNConfig (model + audio)
+├── data.py            # ASDDataset, waveform loading
+├── diagnostics.py     # D1 wiring / D2 branches / D3 overfit
+├── modules/           # frontend, tgramnet, mobilefacenet, arcface, loss, model, edge
+├── pipelines/         # config.py, train.py, eval.py, infer.py
+├── callbacks/         # base, checkpoint, early_stopping, lr_scheduler, wandb
+└── utils/             # io_utils, model_utils, audio_utils
+configs/train.yaml
+scripts/               # download_data, prepare_data, train, evaluate, edge export/quantize
+tests/
+docs/
 ```
 
 ## Docs

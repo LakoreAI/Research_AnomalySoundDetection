@@ -1,0 +1,55 @@
+# STgram-MFN training config — mirrors the reference config.yaml values where
+# they apply to the training loop. Model/audio architecture (n_mels, ArcFace
+# m/s, secs, ...) lives in src/config.py's STgramMFNConfig.
+
+# --- data ---
+data_root: data/raw
+add_root: null            # e.g. data/raw_eval for DCASE eval_dataset normal clips
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+# --- output ---
+ckpt_dir: checkpoints
+result_dir: results
+run_name: null
+
+# --- optimization ---
+epochs: 300
+batch_size: 128
+accum_steps: 1
+num_workers: 0
+pin_memory: false
+amp: false
+lr: 0.0001
+weight_decay: 0.0
+log_every: 10
+eval_every: 10
+ckpt_every: 50
+val_fraction: 0.0
+seed: 42
+
+# --- callbacks ---
+lr_scheduler:
+  type: cosine
+  t_max: 300
+  eta_min: 0.00001
+  start_epoch: 20
+early_stopping:
+  enabled: false
+  monitor: auc
+  mode: max
+  patience: 20
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: false
+  project: stgram-mfn
+  entity: null
+  group: null
+  monitor: auc
+  mode: max
+  log_artifacts: false

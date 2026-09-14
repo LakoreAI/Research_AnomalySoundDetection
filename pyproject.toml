@@ -1,0 +1,65 @@
+[project]
+name = "anomaly-sound-detection"
+version = "0.1.0"
+description = "Embedded Acoustic Anomaly Detection: STgram-MFN vs. mn01 under INT8 quantization"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.4",
+    "soundfile>=0.13.1",
+    "torch>=2.12.0",
+    "torchaudio>=2.11.0",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb>=0.16"]
+# Edge export / quantization path. TFLite conversion additionally needs
+# tensorflow + onnx2tf (see scripts/edge/README.md) and is intentionally not
+# pinned here.
+edge = ["onnx>=1.16", "onnxruntime>=1.18"]
+
+# Platform-aware torch/torchaudio builds.
+#   - Linux: this machine's GPU (Quadro P2000, compute capability 6.1/Pascal)
+#     needs a CUDA-12.x build: the default PyPI wheel (cu130) needs a newer
+#     driver than this machine has, and cu128+ toolchains dropped Pascal
+#     kernels entirely. cu126 is the newest tag that still ships sm_61 kernels.
+#   - macOS (Apple Silicon): PyTorch ships CPU/MPS arm64 wheels only on its
+#     own index; the CUDA index has no macOS builds, so darwin must resolve
+#     against the CPU index (MPS backend, macOS 14+).
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
+    { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
+]
+torchaudio = [
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
+    { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "matplotlib>=3.11.1",
+    "pytest>=9.1.1",
+    "ruff==0.15.15",
+]
+
+[tool.ruff]
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint.per-file-ignores]
+# scripts/*.py run standalone (not `python -m`), so they need sys.path
+# patched with the repo root before their src.* imports resolve.
+"scripts/*.py" = ["E402"]
