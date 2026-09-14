@@ -32,6 +32,40 @@ MAX_FPR = 0.1
 
 
 @torch.no_grad()
+def score_files(
+    model: STgramMFN,
+    extractor: FeatureExtractor,
+    file_paths: List[str],
+    label: int,
+    device: torch.device,
+    batch_size: int = 32,
+) -> List[float]:
+    """Anomaly scores for many files that share one machine-ID label.
+
+    Clips are cropped/padded to a fixed length by FeatureExtractor, so their
+    tensors stack directly and the forward pass can be batched — much faster
+    than one file at a time (feature extraction stays per-file, forward is
+    batched). All files here share `label`, so one label vector is reused.
+    """
+    model.eval()
+    scores: List[float] = []
+    for start in range(0, len(file_paths), batch_size):
+        chunk = file_paths[start : start + batch_size]
+        wavs, mels = [], []
+        for f in chunk:
+            waveform = load_waveform(f, extractor.cfg.sample_rate).to(device)
+            x_wav, x_mel = extractor(waveform)
+            wavs.append(x_wav)
+            mels.append(x_mel)
+        x_wav = torch.stack(wavs)
+        x_mel = torch.stack(mels)
+        labels = torch.full((len(chunk),), label, dtype=torch.long, device=device)
+        logits, _ = model(x_wav, x_mel, labels)
+        scores.extend(anomaly_score(logits, labels).tolist())
+    return scores
+
+
+@torch.no_grad()
 def score_file(
     model: STgramMFN,
     extractor: FeatureExtractor,
@@ -39,14 +73,8 @@ def score_file(
     label: int,
     device: torch.device,
 ) -> float:
-    """Anomaly score for one file relative to its own machine-ID class."""
-    waveform = load_waveform(file_path, extractor.cfg.sample_rate).to(device)
-    x_wav, x_mel = extractor(waveform)
-    labels = torch.tensor([label], device=device)
-    logits, _ = model(
-        x_wav.unsqueeze(0).to(device), x_mel.unsqueeze(0).to(device), labels
-    )
-    return anomaly_score(logits, labels).item()
+    """Anomaly score for a single file relative to its own machine-ID class."""
+    return score_files(model, extractor, [file_path], label, device, batch_size=1)[0]
 
 
 def evaluate(
@@ -57,6 +85,7 @@ def evaluate(
     device: torch.device,
     extractor: Optional[FeatureExtractor] = None,
     save_dir: Optional[Path] = None,
+    batch_size: int = 32,
 ) -> Dict[str, object]:
     """Returns {"auc", "pauc", "per_machine", "per_id"} (auc/pauc as
     fractions in [0, 1], matching the reference's raw sklearn values).
@@ -78,9 +107,9 @@ def evaluate(
             test_files, y_true = create_test_file_list(target_dir, id_str)
             if len(np.unique(y_true)) < 2:
                 continue
-            y_pred = [
-                score_file(model, extractor, f, label, device) for f in test_files
-            ]
+            y_pred = score_files(
+                model, extractor, list(test_files), label, device, batch_size=batch_size
+            )
             auc = roc_auc_score(y_true, y_pred)
             pauc = roc_auc_score(y_true, y_pred, max_fpr=MAX_FPR)
             aucs.append(auc)
