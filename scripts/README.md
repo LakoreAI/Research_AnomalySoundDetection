@@ -53,3 +53,25 @@ uv run python scripts/benchmark_edge.py --ckpt checkpoints/<run>/best.pt \
 Optional dependencies for the edge/upload scripts are installed on demand
 (`onnx`, `onnxruntime`, `tensorflow`, `onnx2tf`, `huggingface_hub`) and are not
 part of the core environment.
+
+## Colab (GPU training)
+
+Drives a real Colab GPU runtime from this machine via the `colab` CLI (ported
+from the sibling `bicafe` project; see `.agents/skills/colab-*`). The local
+P2000 is compute-bound at ~60 clips/s — a Colab T4 is faster.
+
+```bash
+scripts/colab_setup.sh                       # one-time: gcloud + colab CLI + ADC login
+scripts/colab_new_session.sh asd T4          # create/reconnect the session
+scripts/colab_push_repo.sh                   # push committed code + pull DCASE data from HF
+scripts/colab_check_training.sh              # tail checkpoints + train_log.json
+scripts/colab_pull_results.sh                # fetch checkpoints/results back
+scripts/colab_stop.sh                        # stop when done
+```
+
+- `colab_push_repo.sh` ships only committed files (`git archive HEAD`) and
+  refuses a dirty tree; commit first.
+- The dataset is pulled from `LakoreAI/stgram-mfn-dcase2020-{dev,eval}` on HF
+  rather than uploaded (see `.agents/skills/hf-dataset-fast-resume`).
+- On the VM, run entrypoints with cwd `/content/asd` (no `pip install -e .`):
+  `cd /content/asd && python -m src.pipelines.train --config configs/train.yaml --add_root data/raw_eval`.
