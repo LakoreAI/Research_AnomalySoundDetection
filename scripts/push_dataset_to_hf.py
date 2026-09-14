@@ -23,6 +23,11 @@ def main() -> None:
     parser.add_argument("--folder", type=Path, default=REPO_ROOT / "data" / "raw")
     parser.add_argument("--repo_id", type=str, default=None)
     parser.add_argument("--private", action="store_true")
+    parser.add_argument(
+        "--large",
+        action="store_true",
+        help="use resumable upload_large_folder (for multi-GB datasets)",
+    )
     args = parser.parse_args()
 
     load_env(REPO_ROOT / ".env")
@@ -44,12 +49,17 @@ def main() -> None:
     api.create_repo(
         repo_id=repo_id, repo_type="dataset", private=args.private, exist_ok=True
     )
-    api.upload_folder(
-        folder_path=str(args.folder),
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message="Upload prepared anomalous-sound-detection dataset",
-    )
+    if args.large:
+        api.upload_large_folder(
+            folder_path=str(args.folder), repo_id=repo_id, repo_type="dataset"
+        )
+    else:
+        api.upload_folder(
+            folder_path=str(args.folder),
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message="Upload prepared anomalous-sound-detection dataset",
+        )
     print(f"done: https://huggingface.co/datasets/{repo_id}")
 
 

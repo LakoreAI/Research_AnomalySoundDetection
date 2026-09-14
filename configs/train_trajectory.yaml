@@ -1,0 +1,51 @@
+# 30-epoch trajectory check (option 3) — NOT the reference schedule.
+#
+# Purpose: decide whether the full 300-epoch run is worth it, by watching the
+# AUC trajectory. Constant LR because the 300-epoch cosine schedule's t_max
+# would be wrong at this length. Everything else matches configs/train.yaml.
+
+# --- data ---
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+# --- output ---
+ckpt_dir: checkpoints
+result_dir: results
+run_name: null
+
+# --- optimization ---
+epochs: 30
+batch_size: 16
+accum_steps: 8
+num_workers: 2
+pin_memory: false
+amp: false
+lr: 0.0001
+weight_decay: 0.0
+log_every: 10
+eval_every: 5
+ckpt_every: 10
+val_fraction: 0.0
+seed: 42
+
+# --- callbacks ---
+lr_scheduler:
+  type: none
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: trajectory
+  monitor: auc
+  mode: max
+  log_artifacts: false
