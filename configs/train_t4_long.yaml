@@ -1,0 +1,51 @@
+# Longer STgram-MFN run on Colab T4 (follows the 30-epoch trajectory).
+#
+# Cosine LR over the run (the trajectory used constant LR), closer to the
+# reference schedule's intent. Sized to finish within the overnight window:
+# ~4 min/epoch on T4 at batch 64 -> ~60 epochs is ~4.2 h.
+
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+ckpt_dir: checkpoints
+result_dir: results
+run_name: null
+
+epochs: 60
+batch_size: 64
+accum_steps: 2
+num_workers: 8
+pin_memory: false
+amp: false
+lr: 0.0001
+weight_decay: 0.0
+log_every: 20
+eval_every: 10
+ckpt_every: 20
+val_fraction: 0.0
+seed: 42
+
+# --- callbacks ---
+lr_scheduler:
+  type: cosine
+  t_max: 17000
+  eta_min: 0.00001
+  start_epoch: 5
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: long
+  monitor: auc
+  mode: max
+  log_artifacts: false
