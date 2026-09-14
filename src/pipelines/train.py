@@ -16,6 +16,7 @@ Usage:
 """
 
 import argparse
+import os
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Tuple
@@ -38,7 +39,7 @@ from src.modules.model import STgramMFN
 from src.pipelines.config import TrainingConfig, load_training_config
 from src.pipelines.eval import evaluate, format_report
 from src.utils.audio_utils import build_train_file_list, metadata_to_label
-from src.utils.io_utils import save_checkpoint, save_json
+from src.utils.io_utils import load_env, save_checkpoint, save_json
 from src.utils.model_utils import count_parameters, detect_device, get_run_name
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -214,6 +215,10 @@ def val_loss_per_epoch(model, criterion, loader, device) -> float:
 
 
 def train(train_cfg: TrainingConfig):
+    load_env(REPO_ROOT / ".env")  # WANDB_API_KEY / HF_API_KEY for callbacks
+    # reduce allocator fragmentation on the tight 4 GB local GPU (must be set
+    # before the CUDA context is created — detect_device() initializes it).
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     device = detect_device()
     print(f"device: {device}")
 

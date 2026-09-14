@@ -17,9 +17,12 @@ run_name: null
 
 # --- optimization ---
 epochs: 300
-batch_size: 128
-accum_steps: 1
-num_workers: 0
+# Local Quadro P2000 (4 GB): batch 16 peaks ~1.6 GB; 32 (~3.1 GB) fits only
+# with fragmentation headroom and has OOM'd, 48+ always OOMs at 10 s.
+# effective batch = batch_size * accum_steps = 128, matching the reference.
+batch_size: 16
+accum_steps: 8
+num_workers: 2
 pin_memory: false
 amp: false
 lr: 0.0001
@@ -46,7 +49,7 @@ best_metric: auc
 best_mode: max
 
 wandb:
-  enabled: false
+  enabled: true
   project: stgram-mfn
   entity: null
   group: null
