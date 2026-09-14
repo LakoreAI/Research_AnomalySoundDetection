@@ -19,6 +19,8 @@ wandb = ["wandb>=0.16"]
 # tensorflow + onnx2tf (see scripts/edge/README.md) and is intentionally not
 # pinned here.
 edge = ["onnx>=1.16", "onnxruntime>=1.18"]
+# Hugging Face Hub upload helpers (scripts/push_{model,dataset}_to_hf.py).
+hub = ["huggingface_hub>=0.24"]
 
 # Platform-aware torch/torchaudio builds.
 #   - Linux: this machine's GPU (Quadro P2000, compute capability 6.1/Pascal)
