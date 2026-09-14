@@ -20,7 +20,10 @@ Usage:
 """
 
 import argparse
+import concurrent.futures
+import shutil
 import sys
+import threading
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -53,20 +56,92 @@ def zenodo_files(record: int) -> List[dict]:
     return data.get("files", [])
 
 
-def download(url: str, dest: Path) -> None:
+def _content_length(url: str) -> int:
+    req = urllib.request.Request(url, method="HEAD")
+    with urllib.request.urlopen(req) as resp:
+        return int(resp.headers.get("Content-Length", 0))
+
+
+def _fetch_range(
+    url: str,
+    start: int,
+    end: int,
+    dest: Path,
+    progress: dict,
+    lock: threading.Lock,
+    total: int,
+) -> None:
+    req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}"})
+    with urllib.request.urlopen(req) as resp, open(dest, "wb") as f:
+        while True:
+            chunk = resp.read(1 << 20)
+            if not chunk:
+                break
+            f.write(chunk)
+            with lock:
+                progress["done"] += len(chunk)
+                pct = min(100, progress["done"] * 100 // total)
+            print(f"\r    {pct:3d}%", end="", flush=True)
+
+
+def download(
+    url: str, dest: Path, connections: int = 16, size: int | None = None
+) -> None:
+    """Download `url` to `dest`.
+
+    Zenodo throttles a single connection to ~0.25 MB/s but scales with
+    concurrency (measured ~8 MB/s at 32 connections), so the default is a
+    multi-connection range download. Falls back to a single stream when the
+    size is unknown, `connections <= 1`, or the server ignores Range.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         print(f"  exists, skipping: {dest.name}")
         return
-    print(f"  downloading {dest.name} ...")
 
-    def hook(block_num, block_size, total_size):
-        if total_size > 0:
-            pct = min(100, block_num * block_size * 100 // total_size)
-            print(f"\r    {pct:3d}%", end="", flush=True)
+    if size is None:
+        size = _content_length(url)
 
-    urllib.request.urlretrieve(url, dest, reporthook=hook)
-    print()
+    if connections <= 1 or size <= 0:
+        print(f"  downloading {dest.name} (single stream) ...")
+        urllib.request.urlretrieve(url, dest)
+        print()
+        return
+
+    print(
+        f"  downloading {dest.name} with {connections} connections "
+        f"({size / 1e9:.2f} GB) ..."
+    )
+    n = min(connections, max(1, size // (1 << 20)))  # >=1 MiB per part
+    bounds = [(size * i // n, size * (i + 1) // n - 1) for i in range(n)]
+    parts = [dest.parent / f".{dest.name}.part{i}" for i in range(n)]
+    progress = {"done": 0}
+    lock = threading.Lock()
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n) as ex:
+            futures = [
+                ex.submit(_fetch_range, url, s, e, p, progress, lock, size)
+                for (s, e), p in zip(bounds, parts)
+            ]
+            for fut in concurrent.futures.as_completed(futures):
+                fut.result()  # re-raise any worker failure
+        print()
+        with open(dest, "wb") as out:
+            for p in parts:
+                with open(p, "rb") as f:
+                    shutil.copyfileobj(f, out)
+    finally:
+        for p in parts:
+            p.unlink(missing_ok=True)
+
+    if dest.stat().st_size != size:
+        print(
+            f"  size mismatch ({dest.stat().st_size} != {size}); retrying single stream"
+        )
+        dest.unlink()
+        urllib.request.urlretrieve(url, dest)
+        print()
 
 
 def extract(zip_path: Path, dest: Path) -> None:
@@ -146,6 +221,12 @@ def main() -> None:
     parser.add_argument(
         "--keep-archives", action="store_true", help="keep downloaded .zip files"
     )
+    parser.add_argument(
+        "--connections",
+        type=int,
+        default=16,
+        help="parallel range connections per file (Zenodo throttles single streams)",
+    )
     args = parser.parse_args()
 
     machines = args.machines or []
@@ -173,7 +254,12 @@ def main() -> None:
                 print(f"  already extracted, skipping: {f['key']}")
                 continue
             zip_path = archives_dir / f["key"]
-            download(url_for(f), zip_path)
+            download(
+                url_for(f),
+                zip_path,
+                connections=args.connections,
+                size=f.get("size"),
+            )
             extract(zip_path, args.dest)
             if not args.keep_archives:
                 zip_path.unlink()
