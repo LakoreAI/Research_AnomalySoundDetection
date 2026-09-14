@@ -52,6 +52,7 @@ torchaudio = [
 dev = [
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.1",
+    "pre-commit>=4.0",
     "pytest>=9.1.1",
     "ruff==0.15.15",
 ]
