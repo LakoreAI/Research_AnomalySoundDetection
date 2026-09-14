@@ -402,6 +402,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--data_root", type=str, default=None)
     parser.add_argument("--add_root", type=str, default=None)
+    parser.add_argument("--machines", nargs="*", default=None)
     parser.add_argument("--ckpt_dir", type=str, default=None)
     parser.add_argument("--result_dir", type=str, default=None)
     parser.add_argument("--run_name", type=str, default=None)
