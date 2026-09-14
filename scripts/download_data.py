@@ -96,6 +96,38 @@ def url_for(f: dict) -> str:
     return links.get("self") or links["content"]
 
 
+def expected_extracted(dest: Path, key: str) -> List[Path]:
+    """Directories a given archive should populate under `dest`.
+
+    Lets a re-run skip machines that are already on disk instead of
+    re-downloading multi-GB archives. Covers the DCASE dev/eval naming and the
+    raw MIMII `<snr>_dB_<machine>` scheme.
+    """
+    name = key[:-4] if key.endswith(".zip") else key
+    if name.startswith("dev_data_"):
+        m = name[len("dev_data_") :]
+        return [dest / m / "train", dest / m / "test"]
+    if name.startswith("eval_data_train_"):
+        m = name[len("eval_data_train_") :]
+        return [dest / m / "train"]
+    if name.startswith("eval_data_test_"):
+        m = name[len("eval_data_test_") :]
+        return [dest / m / "test"]
+    if name.startswith("eval_data_"):
+        return [dest / name[len("eval_data_") :]]
+    if "_dB_" in name:
+        return [dest / name.split("_dB_", 1)[1]]
+    return [dest / name]
+
+
+def already_extracted(dest: Path, key: str) -> bool:
+    """True if every directory this archive populates already holds .wav files."""
+    for path in expected_extracted(dest, key):
+        if not path.is_dir() or not any(path.rglob("*.wav")):
+            return False
+    return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -137,6 +169,9 @@ def main() -> None:
         if args.list:
             continue
         for f in selected:
+            if already_extracted(args.dest, f["key"]):
+                print(f"  already extracted, skipping: {f['key']}")
+                continue
             zip_path = archives_dir / f["key"]
             download(url_for(f), zip_path)
             extract(zip_path, args.dest)
