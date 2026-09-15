@@ -64,6 +64,14 @@ class TrainingConfig:
     # None (or {"enabled": false}) disables W&B logging.
     wandb: Optional[dict] = None
 
+    # Optional incremental checkpoint push to Hugging Face Hub (requires the
+    # `hub` extra). Fails soft — a push error never kills training. Enables
+    # auto-resume after a Colab VM reclaim:
+    #   {"enabled": true, "repo_id": "LakoreAI/stgram-mfn-t4", "every_epochs": 5}
+    # On startup, if `resume_from` is unset and this is enabled, the run's
+    # checkpoints are pulled from the repo and the latest epoch is resumed.
+    hf_push: Optional[dict] = None
+
     resume_from: Optional[str] = None
 
 

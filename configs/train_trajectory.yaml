@@ -49,3 +49,8 @@ wandb:
   monitor: auc
   mode: max
   log_artifacts: false
+
+# Incremental checkpoint push + auto-resume across Colab VM reclaims.
+hf_push:
+  enabled: true
+  repo_id: LakoreAI/stgram-mfn-t4-traj30

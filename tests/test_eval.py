@@ -78,4 +78,8 @@ def test_evaluate_returns_finite_auc(tmp_path):
     result = evaluate(model, cfg, meta2label, test_dirs, torch.device("cpu"))
     assert np.isfinite(result["auc"])
     assert np.isfinite(result["pauc"])
+    assert np.isfinite(result["mauc"])
     assert set(result["per_machine"]) == set(MACHINES)
+    # mAUC is the worst-case id AUC, so it can never exceed the machine mean.
+    for m in result["per_machine"].values():
+        assert m["mauc"] <= m["auc"] + 1e-9

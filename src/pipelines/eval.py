@@ -95,7 +95,7 @@ def evaluate(
 
     per_machine: Dict[str, Dict[str, float]] = {}
     per_id: Dict[str, Dict[str, float]] = {}
-    machine_aucs, machine_paucs = [], []
+    machine_aucs, machine_paucs, machine_maucs = [], [], []
 
     for target_dir in sorted(test_dirs):
         machine_type = Path(target_dir).parent.name
@@ -125,15 +125,21 @@ def evaluate(
             per_machine[machine_type] = {
                 "auc": float(np.mean(aucs)),
                 "pauc": float(np.mean(paucs)),
+                # mAUC: worst-case (minimum) AUC among this machine type's ids —
+                # the reference's stability metric (Table 3, avg 84.86).
+                "mauc": float(np.min(aucs)),
             }
             machine_aucs.append(float(np.mean(aucs)))
             machine_paucs.append(float(np.mean(paucs)))
+            machine_maucs.append(float(np.min(aucs)))
 
     avg_auc = float(np.mean(machine_aucs)) if machine_aucs else float("nan")
     avg_pauc = float(np.mean(machine_paucs)) if machine_paucs else float("nan")
+    avg_mauc = float(np.mean(machine_maucs)) if machine_maucs else float("nan")
     return {
         "auc": avg_auc,
         "pauc": avg_pauc,
+        "mauc": avg_mauc,
         "per_machine": per_machine,
         "per_id": per_id,
     }
@@ -151,9 +157,11 @@ def format_report(result: Dict[str, object]) -> str:
     lines = []
     for machine, m in sorted(result["per_machine"].items()):
         lines.append(
-            f"{machine:14s} AUC={m['auc'] * 100:6.3f}  pAUC={m['pauc'] * 100:6.3f}"
+            f"{machine:14s} AUC={m['auc'] * 100:6.3f}  "
+            f"pAUC={m['pauc'] * 100:6.3f}  mAUC={m['mauc'] * 100:6.3f}"
         )
     lines.append(
-        f"{'TOTAL':14s} AUC={result['auc'] * 100:6.3f}  pAUC={result['pauc'] * 100:6.3f}"
+        f"{'TOTAL':14s} AUC={result['auc'] * 100:6.3f}  "
+        f"pAUC={result['pauc'] * 100:6.3f}  mAUC={result['mauc'] * 100:6.3f}"
     )
     return "\n".join(lines)

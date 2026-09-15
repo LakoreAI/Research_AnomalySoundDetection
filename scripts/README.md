@@ -62,13 +62,18 @@ P2000 is compute-bound at ~60 clips/s — a Colab T4 is faster.
 
 ```bash
 scripts/colab_setup.sh                       # one-time: gcloud + colab CLI + ADC login
-scripts/colab_new_session.sh asd T4          # create/reconnect the session
+scripts/colab_new_session.sh asd T4          # create/reconnect + start keep-alive
 scripts/colab_push_repo.sh                   # push committed code + pull DCASE data from HF
 scripts/colab_check_training.sh              # tail checkpoints + train_log.json
 scripts/colab_pull_results.sh                # fetch checkpoints/results back
 scripts/colab_stop.sh                        # stop when done
 ```
 
+- `colab_new_session.sh` starts `colab_keepalive.sh` (background
+  `colab keep-alive`, 24 h cap) to prevent the idle reclaim that killed a run.
+- Training configs with `hf_push: {enabled, repo_id}` push checkpoints to HF
+  every `ckpt_every` epochs and **auto-resume** from the latest HF epoch on
+  startup — a reclaimed VM costs minutes, not the run.
 - `colab_push_repo.sh` ships only committed files (`git archive HEAD`) and
   refuses a dirty tree; commit first.
 - The dataset is pulled from `LakoreAI/stgram-mfn-dcase2020-{dev,eval}` on HF

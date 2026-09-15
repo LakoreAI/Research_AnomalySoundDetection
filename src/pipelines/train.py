@@ -214,6 +214,32 @@ def val_loss_per_epoch(model, criterion, loader, device) -> float:
     return sum(losses) / len(losses) if losses else float("nan")
 
 
+def _hf_push_enabled(train_cfg: TrainingConfig) -> bool:
+    return bool(train_cfg.hf_push and train_cfg.hf_push.get("enabled", False))
+
+
+def _maybe_push_hf(train_cfg: TrainingConfig, path, run_name: str) -> None:
+    """Upload one checkpoint to the configured HF repo under `<run_name>/`.
+    Never raises — a push failure must not kill training.
+    """
+    if not _hf_push_enabled(train_cfg):
+        return
+    path = Path(path)
+    if not path.exists():
+        return
+    try:
+        from src.utils.hub_utils import push_file
+
+        url = push_file(
+            path,
+            train_cfg.hf_push["repo_id"],
+            path_in_repo=f"{run_name}/{path.name}",
+        )
+        print(f"  [hf_push] {path.name} -> {url}")
+    except Exception as e:  # noqa: BLE001 - deliberately fail-soft
+        print(f"  [hf_push] failed for {path.name}: {e}")
+
+
 def train(train_cfg: TrainingConfig):
     load_env(REPO_ROOT / ".env")  # WANDB_API_KEY / HF_API_KEY for callbacks
     # reduce allocator fragmentation on the tight 4 GB local GPU (must be set
@@ -319,6 +345,21 @@ def train(train_cfg: TrainingConfig):
     step = 0
     stopped_early = False
     start_epoch = 1
+    # Auto-resume from HF after a VM reclaim: pull the run's checkpoints and
+    # continue from the latest epoch, unless an explicit resume_from was given.
+    if train_cfg.resume_from is None and _hf_push_enabled(train_cfg):
+        try:
+            from src.utils.hub_utils import latest_epoch_checkpoint, pull_run
+
+            n = pull_run(train_cfg.hf_push["repo_id"], run_name, ckpt_dir)
+            latest = latest_epoch_checkpoint(ckpt_dir)
+            if latest:
+                train_cfg.resume_from = latest
+                print(
+                    f"auto-resume: pulled {n} checkpoint(s) from HF, resuming {latest}"
+                )
+        except Exception as e:  # noqa: BLE001
+            print(f"  [hf_push] auto-resume skipped: {e}")
     if train_cfg.resume_from:
         raw = torch.load(train_cfg.resume_from, map_location=str(device))
         model.load_state_dict(raw["model"])
@@ -353,7 +394,11 @@ def train(train_cfg: TrainingConfig):
             extra = {}
             if test_dirs and all(Path(d).exists() for d in test_dirs):
                 result = evaluate(model, model_cfg, meta2label, test_dirs, device)
-                extra = {"auc": result["auc"], "pauc": result["pauc"]}
+                extra = {
+                    "auc": result["auc"],
+                    "pauc": result["pauc"],
+                    "mauc": result["mauc"],
+                }
                 record.update(extra)
                 print(format_report(result))
             state = TrainerState(
@@ -366,6 +411,7 @@ def train(train_cfg: TrainingConfig):
             record["val_loss"] = state.val_loss
             for cb in callbacks:
                 cb.on_validation_end(ctx, state)
+            _maybe_push_hf(train_cfg, ckpt_dir / "best.pt", run_name)
             if any(es.should_stop for es in early_stoppers):
                 stopped_early = True
 
@@ -385,6 +431,7 @@ def train(train_cfg: TrainingConfig):
                 },
             )
             print(f"  saved checkpoint: {ckpt_path}")
+            _maybe_push_hf(train_cfg, ckpt_path, run_name)
 
         if stopped_early:
             break
@@ -425,8 +472,18 @@ if __name__ == "__main__":
     parser.add_argument("--resume_from", type=str, default=None)
     parser.add_argument("--amp", action="store_true", default=None)
     parser.add_argument("--pin_memory", action="store_true", default=None)
+    parser.add_argument(
+        "--hf_push_repo",
+        type=str,
+        default=None,
+        help="enable incremental checkpoint push (and auto-resume) to this HF repo",
+    )
     args = parser.parse_args()
 
-    overrides = {k: v for k, v in vars(args).items() if k != "config"}
+    overrides = {
+        k: v for k, v in vars(args).items() if k not in ("config", "hf_push_repo")
+    }
     train_cfg = load_training_config(args.config, **overrides)
+    if args.hf_push_repo:
+        train_cfg.hf_push = {"enabled": True, "repo_id": args.hf_push_repo}
     train(train_cfg)

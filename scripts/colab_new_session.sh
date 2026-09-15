@@ -23,3 +23,6 @@ fi
 echo "[colab_new_session] Hardware check:"
 echo "import subprocess; print(subprocess.run(['nvidia-smi'], capture_output=True, text=True).stdout)" \
   | colab --auth=adc exec -s "$SESSION"
+
+# Prevent idle reclaim while a job runs (24 h CLI cap). Safe to run repeatedly.
+"$(dirname "${BASH_SOURCE[0]}")/colab_keepalive.sh" "$SESSION" || true
