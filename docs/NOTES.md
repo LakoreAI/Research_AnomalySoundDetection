@@ -3,7 +3,7 @@
 ## Resolved decisions
 
 - DCASE Task 2 changed formulation in 2023 — every writeup must state 2020–2022 scope explicitly to avoid ambiguity.
-- mn01 swap is embeddings-in to the MobileFaceNet+ArcFace head, not a full backbone replacement.
+- mn01 swap is a **frontend+backbone replacement with only the ArcFace head shared** (see the pinned definition below). "Embeddings-in to the MobileFaceNet+ArcFace head" was the original framing but is not shape-compatible: mn01 emits a 1-D 96-vector, MobileFaceNet expects a `(2, n_mels, n_frames)` image.
 - Hardware memory footprint validated early (x86 TFLite Micro arena checks), not deferred to deployment.
 - Current DCASE baseline is Harada et al. (EUSIPCO 2023), not MobileNetV2.
 - Transformer survey architectures are related-work citations only — not swap candidates.
@@ -14,6 +14,7 @@
 - Best-epoch selection uses the official DCASE test set (reference behavior) via `BestCheckpoint(monitor="auc")`. This is test-set selection and is flagged as a methodological caveat; a held-out normal `val_fraction` path exists for a leak-free `val_loss` if the protocol is tightened later.
 - INT8 PTQ is done through ONNX Runtime (`scripts/quantize_onnx.py`): dynamic-weight quantization by default, calibrated static (QDQ) preferred for accuracy. TFLite Micro requires full-integer quantization, so the dynamic ONNX INT8 file is not a direct TFLite input.
 - First measured INT8 result: dynamic-weight ONNX INT8 is smaller (1.23 MB vs 4.56 MB) but ~3.5x SLOWER than fp32 on CPU (149 ms vs 42 ms) — expected for dynamically-quantized convnets; this motivates the static QDQ path, not a conclusion about the architecture.
+- **mn01 is pinned (2026-09-16)** to EfficientAT's `mn01_as`: MobileNetV3 `width_mult=0.1`, weights `mn01_as_mAP_298.pt` (AudioSet, mAP 29.8), **123,783 params**, pooled output **96-d**. `mn01_im.pt` is ImageNet-only (unused). The 16k/32k mismatch is resolved: mn01 brings its own 32 kHz frontend (pre-emphasis; STFT `n_fft=1024`/`win 800`/`hop 320`; Kaldi mel banks; `log(x+1e-5)`; `(x+4.5)/5`), so MIMII's 16 kHz audio must be resampled up to 32 kHz for the mn01 row. Verified empirically by loading the real EfficientAT model (not just reading config).
 
 ## Reporting conventions
 

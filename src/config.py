@@ -82,3 +82,46 @@ class STgramMFNConfig:
                 "(TgramNet) — the reference ties them so Tgram and Sgram share "
                 "a time axis"
             )
+
+
+# EfficientAT `mn01_as` — MobileNetV3 width_mult=0.1, AudioSet mAP 29.8.
+# Pinned 2026-09-16 (see docs/NOTES.md): 123,783 params, 96-d pooled output,
+# and it must be fed through its OWN 32 kHz frontend, not STgram's 16 kHz one.
+MN01_AS_URL = (
+    "https://github.com/fschmid56/EfficientAT/releases/download/v0.0.1/"
+    "mn01_as_mAP_298.pt"
+)
+
+
+@dataclass
+class MN01Config:
+    """EfficientAT mn01 (MobileNetV3 width 0.1) AudioSet embedder.
+
+    Unlike STgram-MFN this is a *pretrained* network, so the frontend is part
+    of the contract: the AudioSet weights only make sense when the input is a
+    32 kHz waveform mel-transformed exactly the way EfficientAT does it
+    (pre-emphasis, `win_length=800` / `hop_length=320`, Kaldi mel banks, then
+    `log(x + 1e-5)` and `(x + 4.5) / 5`). MIMII is 16 kHz, so the mn01 row of
+    the comparison matrix must resample up to `sample_rate` here.
+    """
+
+    # --- backbone ---
+    width_mult: float = 0.1
+    num_classes: int = 527  # AudioSet classes; the MLP head is dropped for ASD
+
+    # --- frontend (EfficientAT `AugmentMelSTFT`, eval settings) ---
+    sample_rate: int = 32000
+    n_mels: int = 128
+    n_fft: int = 1024
+    win_length: int = 800
+    hop_length: int = 320
+    fmin: float = 0.0
+    fmax: float = 15000.0
+    secs: float = 10.0
+
+    pretrained_url: str = MN01_AS_URL
+
+    @property
+    def n_frames(self) -> int:
+        """STFT frames for a `secs`-long clip at this hop (shape bookkeeping)."""
+        return 1 + int(self.secs * self.sample_rate) // self.hop_length

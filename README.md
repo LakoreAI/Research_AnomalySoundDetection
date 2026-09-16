@@ -11,7 +11,10 @@ and metrics; [`docs/NOTES.md`](docs/NOTES.md) for decisions; and
 ## Status
 
 M1 (Baseline Reproduction) — **STgram-MFN reference backbone implemented**.
-mn01 swap, INT8 PTQ, and the comparison matrix are upcoming.
+M2 — **mn01 pinned and wrapped** (`src/modules/mn01.py`: EfficientAT `mn01_as`,
+width 0.1, 123,783 params, 96-d embedding, parity-tested against the real
+model); the ArcFace-headed swap itself and INT8 PTQ / comparison matrix are
+upcoming.
 
 ## Setup
 
@@ -40,6 +43,7 @@ src/
 │   ├── arcface.py       # ArcMarginProduct head
 │   ├── loss.py          # ASDLoss + anomaly score
 │   ├── model.py         # STgramMFN
+│   ├── mn01.py          # EfficientAT mn01 (width 0.1) embedder + 32 kHz frontend
 │   └── edge.py          # STgramMFNScorer (deployment wrapper)
 ├── pipelines/           # config.py (TrainingConfig), train.py, eval.py, infer.py
 ├── callbacks/           # base, checkpoint, early_stopping, lr_scheduler, wandb

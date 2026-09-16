@@ -10,7 +10,7 @@ The novelty is the tradeoff characterization, not a new architecture. Both backb
 
 ## Scope
 
-- **In scope:** STgram-MFN (TgramNet + spectrogram branch + MobileFaceNet + Additive Angular Margin (ArcFace) loss) as reference backbone; mn01 as an embeddings-in swap to the same MobileFaceNet+ArcFace head; INT8 Post-Training Quantization (PTQ) with Quantization-Aware Training (QAT) as fallback; TensorFlow Lite (TFLite) Micro deployment target.
+- **In scope:** STgram-MFN (TgramNet + spectrogram branch + MobileFaceNet + Additive Angular Margin (ArcFace) loss) as reference backbone; mn01 as a frontend+backbone swap sharing only the ArcFace head (pinned to EfficientAT `mn01_as`, 32 kHz own frontend — see `docs/REFERENCE.md`); INT8 Post-Training Quantization (PTQ) with Quantization-Aware Training (QAT) as fallback; TensorFlow Lite (TFLite) Micro deployment target.
 - **Benchmark:** DCASE Task 2, 2020–2022 formulation (not the 2023+ "first-shot" format).
 - **Target hardware:** ESP32, Arduino Nano 33 BLE Sense.
 - **Out of scope:** drone-deployable track (optional appendix only, not primary).

@@ -40,7 +40,7 @@ backbone-swap claim until it is credible).
 
 | # | Task | Status |
 |---|---|---|
-| 13 | mn01 (EfficientAT) embeddings-in wrapper; resolve 16k/32k + mel mismatch | [ ] |
+| 13 | mn01 (EfficientAT) wrapper; 16k/32k + mel mismatch resolved (`mn01_as`, 32 kHz own frontend) | [~] |
 | 14 | Same MobileFaceNet+ArcFace head on mn01 embeddings | [ ] |
 | 15 | FP32 head-to-head: STgram-MFN vs mn01 (accuracy + params) | [ ] |
 
