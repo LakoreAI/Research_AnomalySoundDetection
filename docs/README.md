@@ -28,3 +28,5 @@ Example: `docs/reports/2026-09-14/baseline/report_001.md`.
 - [`REFERENCE.md`](REFERENCE.md) — models, datasets, hardware, methodology, metrics
 - [`NOTES.md`](NOTES.md) — decisions log, open questions, non-goals
 - [`TASKS.md`](TASKS.md) — sprint/milestone roadmap
+- [`EXPERIMENTS.md`](EXPERIMENTS.md) — gated, run-by-run checklist for the comparison matrix
+- [`HARDWARE.md`](HARDWARE.md) — compute plan: speed levers, recommended config, provider shortlist

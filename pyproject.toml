@@ -19,7 +19,7 @@ wandb = ["wandb>=0.16"]
 # tensorflow + onnx2tf (see scripts/edge/README.md) and is intentionally not
 # pinned here.
 edge = ["onnx>=1.16", "onnxruntime>=1.18"]
-# Hugging Face Hub upload helpers (scripts/push_{model,dataset}_to_hf.py).
+# Hugging Face Hub upload helpers (scripts/publish/push_{model,dataset}_to_hf.py).
 hub = ["huggingface_hub>=0.24"]
 
 # Platform-aware torch/torchaudio builds.
@@ -65,4 +65,4 @@ extend-exclude = ["*.ipynb"]
 [tool.ruff.lint.per-file-ignores]
 # scripts/*.py run standalone (not `python -m`), so they need sys.path
 # patched with the repo root before their src.* imports resolve.
-"scripts/*.py" = ["E402"]
+"scripts/**/*.py" = ["E402"]

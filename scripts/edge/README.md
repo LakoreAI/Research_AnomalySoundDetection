@@ -8,7 +8,7 @@ core repo only depends on PyTorch, so the conversion tools below are optional.
 ## 1. PyTorch -> ONNX
 
 ```bash
-uv run python scripts/export_onnx.py --ckpt checkpoints/<run>/best.pt \
+uv run python scripts/edge/export_onnx.py --ckpt checkpoints/<run>/best.pt \
     --out export/stgram_mfn.onnx --verify
 ```
 
@@ -20,10 +20,10 @@ Exports `STgramMFNScorer`: inputs `(x_wav, x_mel, label)`, outputs
 ```bash
 uv pip install onnx onnxruntime
 # dynamic (weights INT8, no calibration)
-uv run python scripts/quantize_onnx.py --onnx export/stgram_mfn.onnx \
+uv run python scripts/edge/quantize_onnx.py --onnx export/stgram_mfn.onnx \
     --out export/stgram_mfn_int8.onnx --mode dynamic
 # static (full INT8, calibrated on real clips)
-uv run python scripts/quantize_onnx.py --onnx export/stgram_mfn.onnx \
+uv run python scripts/edge/quantize_onnx.py --onnx export/stgram_mfn.onnx \
     --out export/stgram_mfn_int8_static.onnx --mode static \
     --calib_root data/raw --calib_samples 200
 ```
@@ -35,7 +35,7 @@ fallback is QAT (train with fake-quant observers) — not yet implemented here.
 
 ```bash
 uv pip install tensorflow onnx2tf
-uv run python scripts/export_tflite.py --onnx export/stgram_mfn.onnx \
+uv run python scripts/edge/export_tflite.py --onnx export/stgram_mfn.onnx \
     --out_dir export/tflite --int8 --calib_root data/raw --calib_samples 200
 ```
 
@@ -65,7 +65,7 @@ hardware. Two options:
 - **C++ `MicroInterpreter`** with the `--print_arena` / `GetTensorArena` path,
   or the `tflite-micro` benchmark binary built for the target.
 
-`scripts/benchmark_edge.py` gives a PyTorch/ONNX-side estimate (parameter size,
+`scripts/edge/benchmark_edge.py` gives a PyTorch/ONNX-side estimate (parameter size,
 CPU latency, activation-output sum) as a first screen, but the interpreter's
 reported arena is the number that must fit the ESP32's SRAM.
 

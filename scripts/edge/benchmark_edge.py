@@ -11,8 +11,8 @@ to MCU conditions). Real arena sizing still needs the TFLite Micro
 `--print_arena` path — see scripts/edge/README.md.
 
 Usage:
-    uv run python scripts/benchmark_edge.py --ckpt checkpoints/<run>/best.pt
-    uv run python scripts/benchmark_edge.py --ckpt ... \
+    uv run python scripts/edge/benchmark_edge.py --ckpt checkpoints/<run>/best.pt
+    uv run python scripts/edge/benchmark_edge.py --ckpt ... \
         --onnx export/stgram_mfn.onnx --onnx_int8 export/stgram_mfn_int8.onnx
 """
 
@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.modules.edge import STgramMFNScorer  # noqa: E402

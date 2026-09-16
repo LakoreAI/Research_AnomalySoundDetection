@@ -4,7 +4,7 @@ Reports AUC / pAUC per machine type and overall, optionally writing the
 per-file anomaly scores and a JSON summary.
 
 Usage:
-    uv run python scripts/evaluate.py --ckpt checkpoints/<run>/best.pt \
+    uv run python scripts/training/evaluate.py --ckpt checkpoints/<run>/best.pt \
         --data_root data/raw --save_dir results/<run>
 """
 
@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.pipelines.eval import evaluate, format_report  # noqa: E402

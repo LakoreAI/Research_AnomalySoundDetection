@@ -2,7 +2,7 @@
 # Poll a training run on the Colab VM: checkpoints, the latest epochs from the
 # run's train_log.json, and running python processes.
 #
-# Usage: scripts/colab_check_training.sh [session_name]
+# Usage: scripts/colab/colab_check_training.sh [session_name]
 set -euo pipefail
 
 SESSION="${1:-asd}"

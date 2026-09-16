@@ -5,8 +5,10 @@ microcontroller-class hardware: **STgram-MFN vs. mn01 under INT8 quantization**.
 
 See [`docs/RESEARCH.md`](docs/RESEARCH.md) for the research question, scope, and
 comparison matrix; [`docs/REFERENCE.md`](docs/REFERENCE.md) for models, datasets,
-and metrics; [`docs/NOTES.md`](docs/NOTES.md) for decisions; and
-[`docs/TASKS.md`](docs/TASKS.md) for the sprint roadmap.
+and metrics; [`docs/NOTES.md`](docs/NOTES.md) for decisions;
+[`docs/TASKS.md`](docs/TASKS.md) for the sprint roadmap;
+[`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md) for the gated experiment runbook;
+and [`docs/HARDWARE.md`](docs/HARDWARE.md) for the compute plan.
 
 ## Status
 
@@ -49,34 +51,39 @@ src/
 ├── callbacks/           # base, checkpoint, early_stopping, lr_scheduler, wandb
 └── utils/               # io_utils, model_utils, audio_utils
 configs/train.yaml       # training-loop config
-scripts/                 # data download/prep, train, evaluate, edge export/quantize
+scripts/
+├── data/                # download_data, prepare_data
+├── training/            # train, evaluate, smoke_test, run_detached
+├── edge/                # export_onnx, quantize_onnx, export_tflite, benchmark_edge
+├── publish/             # push_dataset_to_hf, push_model_to_hf
+└── colab/               # colab_* session scripts
 tests/                   # pytest suite
 ```
 
 ## Train
 
 ```bash
-uv run python scripts/download_data.py --dataset dcase2020 --dest data/raw
-uv run python scripts/download_data.py --dataset dcase2020-eval --dest data/raw_eval
-uv run python scripts/prepare_data.py --root data/raw --check
+uv run python scripts/data/download_data.py --dataset dcase2020 --dest data/raw
+uv run python scripts/data/download_data.py --dataset dcase2020-eval --dest data/raw_eval
+uv run python scripts/data/prepare_data.py --root data/raw --check
 
-uv run python scripts/train.py --config configs/train.yaml --add_root data/raw_eval
-uv run python scripts/evaluate.py --ckpt checkpoints/<run>/best.pt --data_root data/raw
+uv run python scripts/training/train.py --config configs/train.yaml --add_root data/raw_eval
+uv run python scripts/training/evaluate.py --ckpt checkpoints/<run>/best.pt --data_root data/raw
 ```
 
 Or without downloading anything:
 
 ```bash
-uv run python scripts/smoke_test.py     # synthetic-audio end-to-end
+uv run python scripts/training/smoke_test.py     # synthetic-audio end-to-end
 ```
 
 ## Edge / INT8
 
 ```bash
-uv run python scripts/export_onnx.py --ckpt checkpoints/<run>/best.pt --out export/stgram_mfn.onnx
-uv run python scripts/quantize_onnx.py --onnx export/stgram_mfn.onnx \
+uv run python scripts/edge/export_onnx.py --ckpt checkpoints/<run>/best.pt --out export/stgram_mfn.onnx
+uv run python scripts/edge/quantize_onnx.py --onnx export/stgram_mfn.onnx \
     --out export/stgram_mfn_int8.onnx --mode static --calib_root data/raw
-uv run python scripts/benchmark_edge.py --ckpt checkpoints/<run>/best.pt \
+uv run python scripts/edge/benchmark_edge.py --ckpt checkpoints/<run>/best.pt \
     --onnx export/stgram_mfn.onnx --onnx_int8 export/stgram_mfn_int8.onnx
 ```
 

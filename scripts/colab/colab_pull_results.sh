@@ -4,16 +4,16 @@
 # so this is safe to run repeatedly without polluting git status).
 #
 # Checkpoints are packaged and chunked defensively: `colab upload` rejects
-# >~64MB with an opaque SSLEOFError (see scripts/colab_push_repo.sh); whether
+# >~64MB with an opaque SSLEOFError (see scripts/colab/colab_push_repo.sh); whether
 # download has the same limit is unverified, so split rather than assume.
 #
-# Usage: scripts/colab_pull_results.sh [session_name]
+# Usage: scripts/colab/colab_pull_results.sh [session_name]
 set -euo pipefail
 
 SESSION="${1:-asd}"
 REMOTE="/content/asd"
 export PATH="$HOME/google-cloud-sdk/bin:$PATH"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 DEST="$REPO_ROOT/checkpoints/colab_pull_${STAMP}"
 mkdir -p "$DEST"

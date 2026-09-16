@@ -37,7 +37,9 @@ src/
 ├── callbacks/         # base, checkpoint, early_stopping, lr_scheduler, wandb
 └── utils/             # io_utils, model_utils, audio_utils
 configs/train.yaml
-scripts/               # download_data, prepare_data, train, evaluate, edge export/quantize
+scripts/               # data/ (download, prepare), training/ (train, evaluate,
+                       # smoke_test, run_detached), edge/ (export, quantize),
+                       # publish/ (HF push), colab/ (session scripts)
 tests/
 docs/
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Provision (or reconnect to) the Colab GPU session this project runs on.
 #
-# Usage: scripts/colab_new_session.sh [session_name] [gpu]
+# Usage: scripts/colab/colab_new_session.sh [session_name] [gpu]
 #   session_name defaults to "asd"
 #   gpu defaults to "T4" (free-tier-eligible; A100/H100 need a paid
 #   entitlement and will 400 without one)

@@ -5,7 +5,7 @@ Builds a tiny DCASE-style tree of sine-wave clips (2 machines x 1 id, normal
 pipeline produces finite AUC. No dataset download required.
 
 Usage:
-    uv run python scripts/smoke_test.py
+    uv run python scripts/training/smoke_test.py
 """
 
 import shutil
@@ -17,7 +17,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.pipelines.config import TrainingConfig  # noqa: E402

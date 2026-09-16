@@ -2,6 +2,7 @@
 
 22 tasks across 5 milestones (M0 Research & Framing → M5 Write-up). Each
 milestone has a Go/No-Go metric and a fallback. Status is updated as work lands.
+See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the gated, run-by-run checklist.
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 

@@ -3,7 +3,7 @@
 # show for it -- always stop when done (a 24 h keep-alive cap is the only
 # automatic reclaim).
 #
-# Usage: scripts/colab_stop.sh [session_name]
+# Usage: scripts/colab/colab_stop.sh [session_name]
 set -euo pipefail
 
 SESSION="${1:-asd}"

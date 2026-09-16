@@ -10,9 +10,9 @@ Both use ONNX Runtime's quantization toolkit:
     uv pip install onnx onnxruntime
 
 Usage:
-    uv run python scripts/quantize_onnx.py --onnx export/stgram_mfn.onnx \
+    uv run python scripts/edge/quantize_onnx.py --onnx export/stgram_mfn.onnx \
         --out export/stgram_mfn_int8.onnx --mode dynamic
-    uv run python scripts/quantize_onnx.py --onnx export/stgram_mfn.onnx \
+    uv run python scripts/edge/quantize_onnx.py --onnx export/stgram_mfn.onnx \
         --out export/stgram_mfn_int8_static.onnx --mode static \
         --calib_root data/raw --calib_samples 200
 """
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.config import STgramMFNConfig  # noqa: E402

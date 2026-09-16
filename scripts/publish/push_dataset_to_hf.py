@@ -3,7 +3,7 @@
 Reads HF_TOKEN (or HF_API_KEY) from .env / the environment.
 
 Usage:
-    uv run python scripts/push_dataset_to_hf.py --folder data/raw \
+    uv run python scripts/publish/push_dataset_to_hf.py --folder data/raw \
         --repo_id <user>/stgram-mfn-dcase2020
 """
 
@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.utils.io_utils import load_env  # noqa: E402

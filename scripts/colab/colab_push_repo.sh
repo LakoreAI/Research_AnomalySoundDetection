@@ -2,7 +2,7 @@
 # Push this repo's committed code onto a running Colab session, pull the DCASE
 # dataset from Hugging Face, and install the runtime deps.
 #
-# Usage: scripts/colab_push_repo.sh [session_name] [--skip-data] [--allow-dirty]
+# Usage: scripts/colab/colab_push_repo.sh [session_name] [--skip-data] [--allow-dirty]
 #
 # `git archive HEAD` ships only TRACKED, COMMITTED files. An uncommitted
 # config/script silently won't reach the VM. By default this script refuses to
@@ -36,7 +36,7 @@ for arg in "$@"; do
 done
 
 export PATH="$HOME/google-cloud-sdk/bin:$PATH"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REMOTE="/content/asd"
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT

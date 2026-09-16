@@ -11,9 +11,9 @@ Pipeline:
                                        (--int8 uses a representative dataset)
 
 Usage:
-    uv run python scripts/export_tflite.py --onnx export/stgram_mfn.onnx \
+    uv run python scripts/edge/export_tflite.py --onnx export/stgram_mfn.onnx \
         --out_dir export/tflite
-    uv run python scripts/export_tflite.py --onnx export/stgram_mfn.onnx \
+    uv run python scripts/edge/export_tflite.py --onnx export/stgram_mfn.onnx \
         --out_dir export/tflite --int8 --calib_root data/raw --calib_samples 200
 
 For TFLite Micro (ESP32 / Nano 33 BLE) you then convert the .tflite to a C
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.config import STgramMFNConfig  # noqa: E402

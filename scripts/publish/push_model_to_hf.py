@@ -4,7 +4,7 @@ Reads HF_TOKEN (or HF_API_KEY) from .env / the environment. Repositories are
 created private by default (flip with --public).
 
 Usage:
-    uv run python scripts/push_model_to_hf.py --ckpt checkpoints/<run>/best.pt \
+    uv run python scripts/publish/push_model_to_hf.py --ckpt checkpoints/<run>/best.pt \
         --repo_id <user>/stgram-mfn-dcase2020
 """
 
@@ -15,7 +15,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.utils.io_utils import load_env  # noqa: E402

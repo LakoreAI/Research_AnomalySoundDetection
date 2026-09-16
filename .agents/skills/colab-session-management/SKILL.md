@@ -71,12 +71,12 @@ for line in ps.splitlines():
 Use the project scripts (they wrap the `colab` CLI and already pass
 `--auth=adc`):
 
-- `scripts/colab_setup.sh` — one-time gcloud + `colab` CLI install/login (ADC).
-- `scripts/colab_new_session.sh [session] [gpu]` — create or reconnect (`asd`, `T4`); auto-starts keep-alive.
-- `scripts/colab_keepalive.sh [session]` — background `colab keep-alive` (24 h cap), prevents idle reclaim.
-- `scripts/colab_push_repo.sh` — push committed code (and pull the dataset).
-- `scripts/colab_pull_results.sh` — fetch checkpoints/results back.
-- `scripts/colab_stop.sh` — stop the session when done.
+- `scripts/colab/colab_setup.sh` — one-time gcloud + `colab` CLI install/login (ADC).
+- `scripts/colab/colab_new_session.sh [session] [gpu]` — create or reconnect (`asd`, `T4`); auto-starts keep-alive.
+- `scripts/colab/colab_keepalive.sh [session]` — background `colab keep-alive` (24 h cap), prevents idle reclaim.
+- `scripts/colab/colab_push_repo.sh` — push committed code (and pull the dataset).
+- `scripts/colab/colab_pull_results.sh` — fetch checkpoints/results back.
+- `scripts/colab/colab_stop.sh` — stop the session when done.
 
 For long jobs, training configs with `hf_push` push checkpoints to HF every
 `ckpt_every` epochs and auto-resume from the latest on startup, so a reclaim

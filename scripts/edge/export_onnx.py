@@ -5,7 +5,7 @@ Exports the `STgramMFNScorer` graph: inputs `(x_wav, x_mel, label)`, outputs
 `cfg.n_frames`); only the batch axis is dynamic.
 
 Usage:
-    uv run python scripts/export_onnx.py --ckpt checkpoints/<run>/best.pt \
+    uv run python scripts/edge/export_onnx.py --ckpt checkpoints/<run>/best.pt \
         --out export/stgram_mfn.onnx
 
 Requires the `onnx` package (install the edge extra):
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import torch
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.modules.edge import STgramMFNScorer  # noqa: E402

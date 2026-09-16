@@ -9,14 +9,14 @@ nothing here hardcodes a stale download URL. Verified records:
     dcase2022      DCASE 2022 Task 2 development set (MIMII DG-style, 7 machines)
 
 The DCASE zips already extract into the `<machine>/<split>/` layout the training
-code expects. Raw MIMII does NOT — run `scripts/prepare_data.py --reorganize`
+code expects. Raw MIMII does NOT — run `scripts/data/prepare_data.py --reorganize`
 afterwards to convert it to DCASE-style filenames.
 
 Usage:
-    uv run python scripts/download_data.py --dataset dcase2020 --dest data/raw
-    uv run python scripts/download_data.py --dataset dcase2020-eval --dest data/raw_eval
-    uv run python scripts/download_data.py --dataset mimii --snr 0 --dest data/mimii
-    uv run python scripts/download_data.py --list --dataset dcase2020
+    uv run python scripts/data/download_data.py --dataset dcase2020 --dest data/raw
+    uv run python scripts/data/download_data.py --dataset dcase2020-eval --dest data/raw_eval
+    uv run python scripts/data/download_data.py --dataset mimii --snr 0 --dest data/mimii
+    uv run python scripts/data/download_data.py --list --dataset dcase2020
 """
 
 import argparse
@@ -29,7 +29,7 @@ import zipfile
 from pathlib import Path
 from typing import Dict, List
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 # Zenodo record ids, verified via https://zenodo.org/api/records/<id>.
@@ -265,7 +265,9 @@ def main() -> None:
                 zip_path.unlink()
 
     print(f"\ndone. data under {args.dest}")
-    print("next: uv run python scripts/prepare_data.py --root", args.dest, "--check")
+    print(
+        "next: uv run python scripts/data/prepare_data.py --root", args.dest, "--check"
+    )
 
 
 if __name__ == "__main__":

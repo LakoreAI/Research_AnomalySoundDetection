@@ -43,7 +43,7 @@ print("✓ Overlay code sync complete. Data directories preserved!")
 
 ---
 
-## Shell Helper (`scripts/colab_push_repo.sh`)
+## Shell Helper (`scripts/colab/colab_push_repo.sh`)
 
 In bash, export code archives with `--exclude`:
 
@@ -58,6 +58,6 @@ tar --exclude='data' \
     -czf /tmp/asd_code.tar.gz .
 ```
 
-`scripts/colab_push_repo.sh` uses `git archive HEAD` (tracked, committed files
+`scripts/colab/colab_push_repo.sh` uses `git archive HEAD` (tracked, committed files
 only) and refuses a dirty working tree by default — an uncommitted config would
 silently not reach the VM otherwise.

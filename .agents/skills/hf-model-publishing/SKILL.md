@@ -27,10 +27,10 @@ Before pushing a checkpoint to Hugging Face Hub:
 
 ## Script
 
-`scripts/push_model_to_hf.py` implements this:
+`scripts/publish/push_model_to_hf.py` implements this:
 
 ```bash
-uv run --extra hub python scripts/push_model_to_hf.py \
+uv run --extra hub python scripts/publish/push_model_to_hf.py \
     --ckpt checkpoints/stgram_mfn_traj30/best.pt \
     --repo_id LakoreAI/stgram-mfn-traj30 \
     --config configs/train_trajectory.yaml

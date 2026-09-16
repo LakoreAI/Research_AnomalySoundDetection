@@ -5,7 +5,7 @@
 # CLI's own cap is 24 h). Start it right after `colab_new_session.sh`; a lost
 # session (404/401) is what killed a training run before this existed.
 #
-# Usage: scripts/colab_keepalive.sh [session_name]
+# Usage: scripts/colab/colab_keepalive.sh [session_name]
 set -euo pipefail
 
 SESSION="${1:-asd}"

@@ -15,9 +15,9 @@ Subcommands:
                 fast smoke tests / method canaries
 
 Usage:
-    uv run python scripts/prepare_data.py --root data/raw --check
-    uv run python scripts/prepare_data.py --root data/mimii --reorganize
-    uv run python scripts/prepare_data.py --root data/raw --make-subset 20 --out data/mini
+    uv run python scripts/data/prepare_data.py --root data/raw --check
+    uv run python scripts/data/prepare_data.py --root data/mimii --reorganize
+    uv run python scripts/data/prepare_data.py --root data/raw --make-subset 20 --out data/mini
 """
 
 import argparse
@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.utils.audio_utils import (  # noqa: E402
