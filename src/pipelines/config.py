@@ -56,6 +56,10 @@ class TrainingConfig:
     # src/config.py).
     arch: Optional[dict] = None
 
+    # Training-time augmentation, off unless enabled. Applied to the training
+    # split only (never val/test). See src/modules/augment.py for the keys.
+    augment: Optional[dict] = None
+
     # --- callbacks ---
     # None (or {"type": "none"}) disables LR scheduling. See
     # src/callbacks/lr_scheduler.py.

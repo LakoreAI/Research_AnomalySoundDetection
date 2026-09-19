@@ -41,11 +41,15 @@ class ASDDataset(Dataset):
         meta2label: Dict[str, int],
         extractor: FeatureExtractor,
         load_in_memory: bool = False,
+        wave_aug=None,
+        spec_aug=None,
     ):
         self.file_list = file_list
         self.meta2label = meta2label
         self.extractor = extractor
         self.load_in_memory = load_in_memory
+        self.wave_aug = wave_aug
+        self.spec_aug = spec_aug
         self.data_list = (
             [self.transform(f) for f in file_list] if load_in_memory else []
         )
@@ -64,7 +68,11 @@ class ASDDataset(Dataset):
         id_str = machine_id_of_file(filename)
         label = self.meta2label[f"{machine}-{id_str}"]
         waveform = load_waveform(filename, self.extractor.cfg.sample_rate)
+        if self.wave_aug is not None:
+            waveform = self.wave_aug(waveform)
         x_wav, x_mel = self.extractor(waveform)
+        if self.spec_aug is not None:
+            x_mel = self.spec_aug(x_mel)
         return x_wav, x_mel, label
 
 

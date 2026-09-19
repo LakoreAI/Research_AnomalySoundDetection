@@ -269,8 +269,16 @@ def train(train_cfg: TrainingConfig):
         all_files, train_cfg.val_fraction, train_cfg.seed
     )
 
+    from src.modules.augment import build_augment
+
+    wave_aug, spec_aug = build_augment(train_cfg.augment)
     train_ds = ASDDataset(
-        train_files, meta2label, extractor, load_in_memory=train_cfg.load_in_memory
+        train_files,
+        meta2label,
+        extractor,
+        load_in_memory=train_cfg.load_in_memory,
+        wave_aug=wave_aug,
+        spec_aug=spec_aug,
     )
     train_loader = DataLoader(
         train_ds,

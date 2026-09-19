@@ -172,3 +172,5 @@ wandb/
 
 # Internal agent skills (not part of the published repo)
 .agents/
+
+docs/paper/

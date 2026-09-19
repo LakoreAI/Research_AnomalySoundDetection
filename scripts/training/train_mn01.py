@@ -21,7 +21,6 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-import torch.nn as nn
 from sklearn.metrics import roc_auc_score
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
@@ -40,6 +39,7 @@ from src.data import load_waveform  # noqa: E402
 from src.modules.arcface import ArcMarginProduct  # noqa: E402
 from src.modules.loss import ASDLoss, anomaly_score  # noqa: E402
 from src.modules.mn01 import MN01Embedder, load_mn01  # noqa: E402
+from src.modules.mn01_head import MN01ArcFace  # noqa: E402
 from src.pipelines.config import load_training_config  # noqa: E402
 from src.pipelines.train import (  # noqa: E402
     build_test_dirs,
@@ -171,41 +171,22 @@ def evaluate_mn01(
 class MN01WaveDataset(Dataset):
     """32 kHz clip + machine-ID label, for fine-tuning mn01 end to end."""
 
-    def __init__(self, files: List[str], labels: np.ndarray, cfg: MN01Config):
+    def __init__(
+        self, files: List[str], labels: np.ndarray, cfg: MN01Config, wave_aug=None
+    ):
         self.files = files
         self.labels = labels
         self.cfg = cfg
+        self.wave_aug = wave_aug
 
     def __len__(self) -> int:
         return len(self.files)
 
     def __getitem__(self, i: int):
-        return _clip32k(self.files[i], self.cfg), int(self.labels[i])
-
-
-class MN01ArcFace(nn.Module):
-    """mn01 embedder + ArcFace head (both trainable when fine-tuning).
-
-    The ArcFace input width is taken from the loaded embedder, so this works
-    for any EfficientAT width (mn01..mn40), not just the 96-d mn01.
-    """
-
-    def __init__(self, mn_cfg: MN01Config, num_classes: int, ckpt):
-        super().__init__()
-        self.cfg_mn = mn_cfg
-        self.embedder = load_mn01(mn_cfg, checkpoint=ckpt, map_location="cpu")
-        head_cfg = STgramMFNConfig(
-            num_classes=num_classes,
-            embed_dim=self.embedder.embed_dim,
-            arcface_m=0.7,
-            arcface_s=30.0,
-        )
-        self.arcface = ArcMarginProduct(head_cfg)
-        self.embed_dim = self.embedder.embed_dim
-
-    def forward(self, wav: torch.Tensor, label: torch.Tensor):
-        emb = self.embedder(wav)
-        return self.arcface(emb, label), emb
+        wav = _clip32k(self.files[i], self.cfg)
+        if self.wave_aug is not None:
+            wav = self.wave_aug(wav)
+        return wav, int(self.labels[i])
 
 
 @torch.no_grad()
@@ -305,9 +286,14 @@ def train_finetune(
     result_dir = Path(train_cfg.result_dir) / run_name
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     model = MN01ArcFace(mn_cfg, num_classes, args.mn01_ckpt).to(device)
+    from src.modules.augment import build_augment
+
+    wave_aug, spec_aug = build_augment(train_cfg.augment)
+    model.augment = spec_aug
     print(
         f"mn01+arcface params (trainable): {sum(p.numel() for p in model.parameters()):,}"
-        f"  embed_dim: {model.embed_dim}"
+        f"  embed_dim: {model.embed_dim}  augment: "
+        f"{'on' if (wave_aug or spec_aug) else 'off'}"
     )
     opt = torch.optim.Adam(
         model.parameters(), lr=train_cfg.lr, weight_decay=train_cfg.weight_decay
@@ -316,7 +302,7 @@ def train_finetune(
     use_amp = train_cfg.amp and device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
     loader = DataLoader(
-        MN01WaveDataset(train_files, train_lab, mn_cfg),
+        MN01WaveDataset(train_files, train_lab, mn_cfg, wave_aug=wave_aug),
         batch_size=args.ft_batch,
         shuffle=True,
         drop_last=True,

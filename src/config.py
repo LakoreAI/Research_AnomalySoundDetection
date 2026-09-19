@@ -54,6 +54,9 @@ class STgramMFNConfig:
     # --- classifier head ---
     num_classes: int = 0  # set at runtime from the machine-id metadata
     embed_dim: int = 128  # MobileFaceNet's penultimate feature width
+    # MobileFaceNet's internal collapsing-conv width (conv2/linear7/linear1).
+    # 512 is the reference; scale down for the small tiers.
+    mfn_width: int = 512
 
     # --- spectral-temporal frontend ---
     # `c_dim` is BOTH the number of mel bins fed to the Sgram branch and the

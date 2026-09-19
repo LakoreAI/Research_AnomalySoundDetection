@@ -22,13 +22,15 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import torch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from src.config import STgramMFNConfig  # noqa: E402
+from src.config import MN01Config, STgramMFNConfig  # noqa: E402
 from src.data import load_waveform  # noqa: E402
 from src.modules.frontend import FeatureExtractor  # noqa: E402
+from src.modules.mn01 import Mn01MelFrontend  # noqa: E402
 from src.utils.audio_utils import (  # noqa: E402
     build_train_file_list,
     machine_id_of_file,
@@ -74,6 +76,40 @@ class WavCalibrationReader:
         self._iter = iter(self.files)
 
 
+class Mn01CalibrationReader:
+    """mn01 ONNX scorer inputs: `x_mel` (32 kHz log-mel, `(1, n_mels, n_frames)`)
+    + `label`. The mel frontend lives outside the exported graph."""
+
+    def __init__(self, files, meta2label, cfg: MN01Config, max_samples: int):
+        self.cfg = cfg
+        self.files = files[:max_samples]
+        self.meta2label = meta2label
+        self.frontend = Mn01MelFrontend(cfg).eval()
+        self._iter = iter(self.files)
+
+    def get_next(self):
+        try:
+            f = next(self._iter)
+        except StopIteration:
+            return None
+        machine = machine_of_file(f)
+        label = self.meta2label.get(f"{machine}-{machine_id_of_file(f)}", 0)
+        n = int(self.cfg.secs * self.cfg.sample_rate)
+        wav = load_waveform(f, self.cfg.sample_rate)
+        if wav.shape[0] < n:
+            wav = torch.nn.functional.pad(wav, (0, n - wav.shape[0]))
+        with torch.no_grad():
+            # frontend -> (1, n_mels, n_frames); graph wants (B, 1, n_mels, n_frames)
+            mel = self.frontend(wav[:n].unsqueeze(0)).numpy()
+        return {
+            "x_mel": mel[:, None, :, :].astype(np.float32),
+            "label": np.array([label], dtype=np.int64),
+        }
+
+    def rewind(self):
+        self._iter = iter(self.files)
+
+
 def dynamic_quantize(src: Path, dst: Path) -> None:
     from onnxruntime.quantization import QuantType, quantize_dynamic
 
@@ -104,6 +140,12 @@ def main() -> None:
     parser.add_argument("--onnx", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--mode", choices=["dynamic", "static"], default="dynamic")
+    parser.add_argument(
+        "--backbone",
+        choices=["stgram", "mn01"],
+        default="stgram",
+        help="input contract of the ONNX graph being quantized",
+    )
     parser.add_argument("--calib_root", type=Path, default=REPO_ROOT / "data" / "raw")
     parser.add_argument("--calib_samples", type=int, default=200)
     parser.add_argument(
@@ -125,10 +167,15 @@ def main() -> None:
         if not train_dirs:
             raise FileNotFoundError(f"no calibration dirs under {args.calib_root}")
         meta2label, _ = metadata_to_label(train_dirs)
-        cfg = _cfg_from_onnx_dir()
-        reader = WavCalibrationReader(
-            build_train_file_list(train_dirs), meta2label, cfg, args.calib_samples
-        )
+        files = build_train_file_list(train_dirs)
+        if args.backbone == "mn01":
+            reader = Mn01CalibrationReader(
+                files, meta2label, MN01Config(), args.calib_samples
+            )
+        else:
+            reader = WavCalibrationReader(
+                files, meta2label, _cfg_from_onnx_dir(), args.calib_samples
+            )
         static_quantize(args.onnx, args.out, reader)
 
     fp32 = args.onnx.stat().st_size / 1e6

@@ -1,0 +1,66 @@
+# mn01 fine-tune WITH augmentation — tests whether noise/gain/shift +
+# SpecAugment closes the gap to STgram-MFN. Same lean protocol as train_lean.yaml
+# otherwise, so it is comparable to the un-augmented B1-ft run.
+#
+# If the augmented score does not improve, this stays in docs/ and out of the
+# paper.
+
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+ckpt_dir: checkpoints
+result_dir: results
+run_name: null
+
+epochs: 100
+batch_size: 128
+accum_steps: 1
+num_workers: 8
+pin_memory: true
+amp: true
+lr: 0.0001
+weight_decay: 0.0
+log_every: 50
+eval_every: 10
+ckpt_every: 100
+val_fraction: 0.0
+seed: 42
+
+lr_scheduler:
+  type: cosine
+  t_max: 100
+  eta_min: 0.00001
+  start_epoch: 5
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: aug
+  monitor: auc
+  mode: max
+  log_artifacts: true
+
+hf_push:
+  enabled: true
+  repo_id: LakoreAI/stgram-mfn-lean
+  push_epochs: false
+
+augment:
+  enabled: true
+  noise_std: 0.005
+  gain_db: 6.0
+  time_shift: 0.1
+  spec_freq_mask: 27
+  spec_time_mask: 25
+  spec_n_freq: 2
+  spec_n_time: 2

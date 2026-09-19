@@ -102,9 +102,10 @@ class MobileFaceNet(nn.Module):
         self.inplanes = 64
         self.blocks = self._make_layer(Bottleneck, setting)
 
-        self.conv2 = ConvBlock(setting[-1][1], 512, 1, 1, 0)
-        self.linear7 = ConvBlock(512, 512, cfg.spatial_size, 1, 0, dw=True, linear=True)
-        self.linear1 = ConvBlock(512, cfg.embed_dim, 1, 1, 0, linear=True)
+        w = cfg.mfn_width
+        self.conv2 = ConvBlock(setting[-1][1], w, 1, 1, 0)
+        self.linear7 = ConvBlock(w, w, cfg.spatial_size, 1, 0, dw=True, linear=True)
+        self.linear1 = ConvBlock(w, cfg.embed_dim, 1, 1, 0, linear=True)
 
         self.fc_out = nn.Linear(cfg.embed_dim, cfg.num_classes)
 

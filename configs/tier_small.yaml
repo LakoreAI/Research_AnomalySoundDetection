@@ -1,0 +1,60 @@
+# Stage 8 tier ladder — small (~0.31 M params).
+# Same lean protocol as train_lean.yaml (100 ep, batch 128, AMP, cosine).
+# "normal" tier is A1 (configs/train_lean.yaml, 1.16 M, AUC 91.45).
+
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+ckpt_dir: checkpoints
+result_dir: results
+run_name: tier_small
+
+epochs: 100
+batch_size: 128
+accum_steps: 1
+num_workers: 8
+pin_memory: true
+amp: true
+lr: 0.0001
+weight_decay: 0.0
+log_every: 50
+eval_every: 10
+ckpt_every: 100
+val_fraction: 0.0
+seed: 42
+
+lr_scheduler:
+  type: cosine
+  t_max: 100
+  eta_min: 0.00001
+  start_epoch: 5
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: tiers
+  monitor: auc
+  mode: max
+  log_artifacts: true
+
+hf_push:
+  enabled: true
+  repo_id: LakoreAI/stgram-mfn-tiers
+  push_epochs: false
+
+arch:
+  c_dim: 64
+  n_mels: 64
+  embed_dim: 64
+  mfn_width: 64
+  bottleneck_setting: [[2, 64, 2, 2], [4, 64, 2, 2], [4, 64, 2, 2]]
