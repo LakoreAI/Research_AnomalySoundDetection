@@ -169,3 +169,6 @@ export/
 wandb/
 *.onnx
 *.tflite
+
+# Internal agent skills (not part of the published repo)
+.agents/
