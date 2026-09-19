@@ -24,6 +24,12 @@ def main() -> None:
     parser.add_argument("--repo_id", type=str, default=None)
     parser.add_argument("--private", action="store_true")
     parser.add_argument(
+        "--card",
+        type=Path,
+        default=None,
+        help="dataset card (uploaded as README.md); inferred from repo_id if omitted",
+    )
+    parser.add_argument(
         "--large",
         action="store_true",
         help="use resumable upload_large_folder (for multi-GB datasets)",
@@ -49,6 +55,23 @@ def main() -> None:
     api.create_repo(
         repo_id=repo_id, repo_type="dataset", private=args.private, exist_ok=True
     )
+
+    card = args.card
+    if card is None:
+        cards_dir = Path(__file__).resolve().parent / "dataset_cards"
+        card = cards_dir / ("eval.md" if "eval" in repo_id else "dev.md")
+    if card.exists():
+        api.upload_file(
+            path_or_fileobj=str(card),
+            path_in_repo="README.md",
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message="Add dataset card",
+        )
+        print(f"uploaded dataset card: {card.name}")
+    else:
+        print(f"warning: no dataset card found at {card}")
+
     if args.large:
         api.upload_large_folder(
             folder_path=str(args.folder), repo_id=repo_id, repo_type="dataset"

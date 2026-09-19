@@ -261,7 +261,7 @@ def train(train_cfg: TrainingConfig):
     meta2label, label2meta = metadata_to_label(train_dirs)
     print(f"classes (machine-ids): {len(meta2label)}")
 
-    model_cfg = STgramMFNConfig(num_classes=len(meta2label))
+    model_cfg = STgramMFNConfig(num_classes=len(meta2label), **(train_cfg.arch or {}))
     extractor = make_extractor(model_cfg)
 
     all_files = build_train_file_list(train_dirs)
@@ -345,6 +345,9 @@ def train(train_cfg: TrainingConfig):
     step = 0
     stopped_early = False
     start_epoch = 1
+    # HF push is best-only: track the last pushed best value so we upload only
+    # on improvement (and never the periodic epoch_*.pt files).
+    pushed_best = None
     # Auto-resume from HF after a VM reclaim: pull the run's checkpoints and
     # continue from the latest epoch, unless an explicit resume_from was given.
     if train_cfg.resume_from is None and _hf_push_enabled(train_cfg):
@@ -393,7 +396,14 @@ def train(train_cfg: TrainingConfig):
             val_loss = val_loss_per_epoch(model, criterion, val_loader, device)
             extra = {}
             if test_dirs and all(Path(d).exists() for d in test_dirs):
-                result = evaluate(model, model_cfg, meta2label, test_dirs, device)
+                result = evaluate(
+                    model,
+                    model_cfg,
+                    meta2label,
+                    test_dirs,
+                    device,
+                    num_workers=train_cfg.num_workers,
+                )
                 extra = {
                     "auc": result["auc"],
                     "pauc": result["pauc"],
@@ -411,7 +421,19 @@ def train(train_cfg: TrainingConfig):
             record["val_loss"] = state.val_loss
             for cb in callbacks:
                 cb.on_validation_end(ctx, state)
-            _maybe_push_hf(train_cfg, ckpt_dir / "best.pt", run_name)
+            # Push best.pt to HF only when the monitored metric improves.
+            value = extra.get(train_cfg.best_metric) if extra else None
+            improved = value is not None and (
+                pushed_best is None
+                or (
+                    value > pushed_best
+                    if train_cfg.best_mode == "max"
+                    else value < pushed_best
+                )
+            )
+            if improved:
+                _maybe_push_hf(train_cfg, ckpt_dir / "best.pt", run_name)
+                pushed_best = value
             if any(es.should_stop for es in early_stoppers):
                 stopped_early = True
 
@@ -431,10 +453,18 @@ def train(train_cfg: TrainingConfig):
                 },
             )
             print(f"  saved checkpoint: {ckpt_path}")
-            _maybe_push_hf(train_cfg, ckpt_path, run_name)
+            # Epoch checkpoints stay local for resume; HF gets best.pt only
+            # unless `hf_push.push_epochs` is explicitly enabled.
+            if _hf_push_enabled(train_cfg) and train_cfg.hf_push.get(
+                "push_epochs", False
+            ):
+                _maybe_push_hf(train_cfg, ckpt_path, run_name)
 
         if stopped_early:
             break
+
+    # Final hand-off: guarantee best.pt is on HF once the run is done.
+    _maybe_push_hf(train_cfg, ckpt_dir / "best.pt", run_name)
 
     for cb in callbacks:
         cb.on_train_end(ctx)

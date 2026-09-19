@@ -110,3 +110,35 @@ INT8 delta stays comparable. A flip is a finding, not a failure.
 
 - [ ] Fill the 2×3 matrix (one row per cell; mean ± std across seeds).
 - [ ] Tradeoff plots (AUC vs params / latency / arena) and related-work synthesis.
+
+## Stage 8 — Winner + model tiers + release (post-matrix, run ONLY after everything above)
+
+Requested 2026-09-19. Gate: do nothing here until the lean matrix (A1 /
+A1const / B1 / A2 / edge) has finished and a winner is chosen.
+
+1. **Pick the winning architecture** from the matrix by AUC / mAUC, then
+   params, latency, and edge arena/latency as tie-breakers. Record the decision
+   in [`NOTES.md`](NOTES.md).
+2. **Train a size ladder** of the winner — `small`, `normal`, `large`,
+   `x-large`. Scaling **confirmed 2026-09-19**:
+   - *If STgram-MFN wins* — scale `c_dim`/`n_mels`, `embed_dim`, and
+     `bottleneck_setting` repeats:
+     `small` ~0.3 M · `normal` = reference 1.16 M · `large` ~3 M · `x-large` ~8 M.
+   - *If mn01 wins* — EfficientAT MobileNetV3 width multipliers
+     (`NAME_TO_WIDTH`): `small` mn02 · `normal` mn04 · `large` mn10 ·
+     `x-large` mn20 (each has its own AudioSet checkpoint; ArcFace head only).
+   - Train each tier with the frozen protocol from Stage 7 (same data, seed,
+     best-epoch rule).
+   - Mechanics: STgram tiers set `arch: {c_dim, n_mels, embed_dim, ...}` in the
+     training YAML (`spatial_size` now derives automatically in
+     `src/config.py`); mn01 tiers pass `--mn01_name mn02|mn04|mn10|mn20` to
+     `scripts/training/train_mn01.py`, which resolves width + AudioSet
+     checkpoint via `src.config.mn01_config`. The ArcFace input width is read
+     from the loaded embedder (mn02 = 192-d, not 96).
+3. **Push every tier to HF** as its own model repo with a model card
+   (params, AUC/pAUC/mAUC, size, latency, license), via
+   `scripts/publish/push_model_to_hf.py`.
+4. **Edge test every tier**: ONNX/INT8 (`scripts/edge/quantize_onnx.py`) +
+   Qualcomm AI Hub sweep across all available chips
+   (`scripts/edge/qai_hub_benchmark.py`) + TFLite-Micro arena. Record
+   latency/arena per tier in the tradeoff table.

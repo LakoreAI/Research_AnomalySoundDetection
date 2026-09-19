@@ -110,14 +110,11 @@ class WandbCallback(Callback):
             metrics["val_loss"] = state.val_loss
         self.log_metrics(metrics, step=state.step, prefix="eval")
 
-        if not self.log_artifacts or ctx is None:
-            return
-        value = metrics.get(self.monitor)
-        if value is not None and value == self.best:
+    def on_train_end(self, ctx: TrainContext) -> None:
+        # One artifact per run: the final best checkpoint (never epoch_*.pt).
+        if self.enabled and self.log_artifacts and ctx is not None:
             best_path = Path(ctx.ckpt_dir) / "best.pt"
             if best_path.exists():
                 run_label = self.run.name if self.run is not None else "stgram-mfn"
                 self.log_artifact(best_path, name=f"{run_label}-best")
-
-    def on_train_end(self, ctx: TrainContext) -> None:
         self.finish()

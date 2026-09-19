@@ -69,6 +69,26 @@ hardware. Two options:
 CPU latency, activation-output sum) as a first screen, but the interpreter's
 reported arena is the number that must fit the ESP32's SRAM.
 
+## 5b. Qualcomm AI Hub (Snapdragon NPU) profiling
+
+The Qualcomm counterpart to the MCU arena check: compile + profile the exported
+ONNX on cloud-hosted Snapdragon devices (`scripts/edge/qai_hub_benchmark.py`).
+
+```bash
+uv pip install qai-hub
+qai-hub configure --api_token "$QAI_HUB_API_TOKEN"
+uv run python scripts/edge/qai_hub_benchmark.py \
+    --onnx export/stgram_mfn.onnx --runtime tflite \
+    --out export/qai_hub_results.json            # --devices "…" to subset
+```
+
+Notes (learned by running it):
+- `input_specs` must include explicit dtypes and concrete dims; `label` is
+  `int64`. TFLite additionally needs `--truncate_64bit_io` (the script adds it).
+- Profile JSON reports `estimated_inference_time` (microseconds) and
+  `estimated_inference_peak_memory` (bytes). Canary dry-run on Galaxy S24:
+  ~6.94 ms/inference.
+
 ## 6. Target notes
 
 - **ESP32**: ~520 KB SRAM (no PSRAM). Arena must fit alongside the interpreter

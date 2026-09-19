@@ -1,0 +1,62 @@
+# Lean experiment protocol — 100 epochs, batch 128, AMP (24 GB A5000).
+#
+# Use the SAME config for both backbones in the A-vs-B comparison (see
+# docs/EXPERIMENTS.md). Checkpoint policy:
+#   - HF receives best.pt only (no epoch_*.pt); `push_epochs: false`.
+#   - A single best checkpoint is logged to W&B as an artifact at run end.
+#   - Local epoch_*.pt checkpoints are kept for resume but never pushed.
+
+# --- data ---
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+# --- output ---
+ckpt_dir: checkpoints
+result_dir: results
+run_name: null
+
+# --- optimization ---
+epochs: 100
+batch_size: 128
+accum_steps: 1
+num_workers: 8
+pin_memory: true
+amp: true
+lr: 0.0001
+weight_decay: 0.0
+log_every: 50
+eval_every: 10
+ckpt_every: 100
+val_fraction: 0.0
+seed: 42
+
+# --- callbacks ---
+lr_scheduler:
+  type: cosine
+  t_max: 100
+  eta_min: 0.00001
+  start_epoch: 5
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: lean
+  monitor: auc
+  mode: max
+  log_artifacts: true
+
+# HF: best.pt only; final push at run end.
+hf_push:
+  enabled: true
+  repo_id: LakoreAI/stgram-mfn-lean
+  push_epochs: false

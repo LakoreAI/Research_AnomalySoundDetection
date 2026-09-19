@@ -1,0 +1,60 @@
+# Lean protocol, CONSTANT LR (no schedule) — follow-up to train_lean.yaml.
+#
+# Rationale: the earlier 30-epoch trajectory run (W&B `stgram_mfn_t4_traj30`,
+# constant LR 1e-4) reportedly held a better AUC trajectory over the first
+# ~3k steps than the cosine 300-epoch schedule. This config removes the cosine
+# decay (train_lean.yaml used t_max=100, start_epoch=5) so LR stays at `lr`
+# for the whole run. Everything else is identical to train_lean.yaml so the
+# two are directly comparable.
+
+# --- data ---
+data_root: data/raw
+add_root: data/raw_eval
+machines: [fan, pump, slider, valve, ToyCar, ToyConveyor]
+train_subdir: train
+test_subdir: test
+load_in_memory: false
+
+# --- output ---
+ckpt_dir: checkpoints
+result_dir: results
+run_name: lean_A1const_stgram
+
+# --- optimization ---
+epochs: 100
+batch_size: 128
+accum_steps: 1
+num_workers: 8
+pin_memory: true
+amp: true
+lr: 0.0001
+weight_decay: 0.0
+log_every: 50
+eval_every: 10
+ckpt_every: 100
+val_fraction: 0.0
+seed: 42
+
+# --- callbacks ---
+lr_scheduler:
+  type: none          # constant LR — the point of this run
+early_stopping:
+  enabled: false
+save_best: true
+best_metric: auc
+best_mode: max
+
+wandb:
+  enabled: true
+  project: stgram-mfn
+  entity: null
+  group: lean_constlr
+  monitor: auc
+  mode: max
+  log_artifacts: true
+
+# HF: best.pt only; final push at run end.
+hf_push:
+  enabled: true
+  repo_id: LakoreAI/stgram-mfn-lean
+  push_epochs: false

@@ -13,7 +13,30 @@ github.com/liuyoude/STgram-MFN; this module is a faithful re-expression of
 """
 
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Optional, Tuple
+
+
+def _downsample2(n: int) -> int:
+    """Output of a kernel-3, stride-2, pad-1 conv: ceil(n / 2)."""
+    return (n - 1) // 2 + 1
+
+
+def backbone_spatial_size(
+    c_dim: int,
+    n_frames: int,
+    bottleneck_setting: Tuple[Tuple[int, int, int, int], ...],
+) -> Tuple[int, int]:
+    """Spatial (freq, time) size MobileFaceNet's depthwise collapsing conv sees.
+
+    The input is `(c_dim, n_frames)`; `conv1` halves both, then each bottleneck
+    entry with stride 2 halves both again. Reference: (128, 313) -> (8, 20).
+    """
+    f, t = _downsample2(c_dim), _downsample2(n_frames)
+    for entry in bottleneck_setting:
+        if entry[3] == 2:
+            f, t = _downsample2(f), _downsample2(t)
+    return f, t
+
 
 # DCASE 2022 Task 2 Top-1 bottleneck setting, quoted verbatim from the
 # reference `net.py` (it supersedes the original MobileFaceNet setting and the
@@ -46,9 +69,10 @@ class STgramMFNConfig:
     # hardcodes 313); deriving it keeps the module correct if the frontend
     # changes instead of silently shape-erroring.
     n_frames: int = 313
-    # Spatial size MobileFaceNet's depthwise collapsing conv sees after the
-    # three stride-2 stages. Reference hardcodes (8, 20) for a 128x313 input.
-    spatial_size: Tuple[int, int] = (8, 20)
+    # Derived in __post_init__ from (c_dim, n_frames, bottleneck_setting):
+    # the spatial size MobileFaceNet's depthwise collapsing conv must cover.
+    # Reference: (128, 313) -> (8, 20).
+    spatial_size: Optional[Tuple[int, int]] = None
 
     bottleneck_setting: Tuple[Tuple[int, int, int, int], ...] = field(
         default_factory=lambda: DEFAULT_BOTTLENECK_SETTING
@@ -82,6 +106,9 @@ class STgramMFNConfig:
                 "(TgramNet) — the reference ties them so Tgram and Sgram share "
                 "a time axis"
             )
+        self.spatial_size = backbone_spatial_size(
+            self.c_dim, self.n_frames, self.bottleneck_setting
+        )
 
 
 # EfficientAT `mn01_as` — MobileNetV3 width_mult=0.1, AudioSet mAP 29.8.
@@ -125,3 +152,50 @@ class MN01Config:
     def n_frames(self) -> int:
         """STFT frames for a `secs`-long clip at this hop (shape bookkeeping)."""
         return 1 + int(self.secs * self.sample_rate) // self.hop_length
+
+
+# --- mn01 family (Stage 8 tier ladder) --------------------------------------
+# EfficientAT width multipliers (helpers/utils.py:NAME_TO_WIDTH) and the
+# AudioSet checkpoints on the v0.0.1 release. Only widths that actually ship an
+# `*_as` checkpoint are listed (mn06/mn08/mn12/... are ImageNet-only there).
+MN01_WIDTHS = {
+    "mn01": 0.1,
+    "mn02": 0.2,
+    "mn04": 0.4,
+    "mn05": 0.5,
+    "mn10": 1.0,
+    "mn20": 2.0,
+    "mn30": 3.0,
+    "mn40": 4.0,
+}
+MN01_AS_ASSETS = {
+    "mn01": "mn01_as_mAP_298.pt",
+    "mn02": "mn02_as_mAP_378.pt",
+    "mn04": "mn04_as_mAP_432.pt",
+    "mn05": "mn05_as_mAP_443.pt",
+    "mn10": "mn10_as_mAP_471.pt",
+    "mn20": "mn20_as_mAP_478.pt",
+    "mn30": "mn30_as_mAP_482.pt",
+    "mn40": "mn40_as_mAP_484.pt",
+}
+MN01_RELEASE_URL = "https://github.com/fschmid56/EfficientAT/releases/download/v0.0.1/"
+
+
+def mn01_config(name: str = "mn01") -> MN01Config:
+    """Build an `MN01Config` for an EfficientAT width name (mn01..mn40).
+
+    Raises for widths without an AudioSet checkpoint (the weights are width-
+    specific, so a mismatched checkpoint would fail `strict=True` loading).
+    """
+    if name not in MN01_WIDTHS:
+        raise ValueError(
+            f"unknown mn01 name {name!r}; choose from {sorted(MN01_WIDTHS)}"
+        )
+    if name not in MN01_AS_ASSETS:
+        raise ValueError(
+            f"no AudioSet checkpoint for {name!r}; available: {sorted(MN01_AS_ASSETS)}"
+        )
+    return MN01Config(
+        width_mult=MN01_WIDTHS[name],
+        pretrained_url=MN01_RELEASE_URL + MN01_AS_ASSETS[name],
+    )

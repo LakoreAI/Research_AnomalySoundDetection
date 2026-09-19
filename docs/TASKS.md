@@ -80,3 +80,9 @@ reduced STgram-MFN variant (smaller `n_mels`/`n_frames`) or fixed STFT front-end
 Supporting artifacts (not in the 22): Research Paper Outline, Scholarship
 Statement of Purpose, Related Work synthesis — tracked in `docs/NOTES.md` under
 open questions.
+
+**Post-matrix release (requested 2026-09-19, blocked on the lean matrix):** pick
+the winning backbone, train a `small / normal / large / x-large` tier ladder of
+it, push each tier to the Hub with a model card, and edge-test each tier
+(ONNX/INT8 + Qualcomm AI Hub + TFLite-Micro arena). Runbook:
+[`EXPERIMENTS.md`](EXPERIMENTS.md) Stage 8.

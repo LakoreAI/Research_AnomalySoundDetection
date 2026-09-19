@@ -60,16 +60,137 @@ newer PyTorch and will fight the pin.
 - TensorDock — RTX 4090 $0.35/h, consumer from $0.12; KVM root, 99.99% uptime.
 - Vast.ai on-demand / JarvisLabs L4/A30.
 
-## Ckey.vn cart
+## RunPod — chosen rental (2026-09-19)
 
-- Product: **Thuê Máy → KVM GPU** (full VM + root, not Container, not the web PC).
-- **1× RTX 4090 24 GB** (fallback: RTX 3090 24 GB).
-- **≥8 vCPU · ≥32 GB RAM · ≥200 GB NVMe · ≥1 Gbps · Ubuntu 22.04 · root SSH**.
-- Host type **Datacenter**, high uptime.
+Ckey.vn is down (backend DB unreachable since 2026-09-19 02:22 UTC — every route
+returns `Không thể kết nối đến cơ sở dữ liệu`), so the run moves to RunPod. Live
+availability/prices via RunPod's GraphQL `gpuTypes.lowestPrice`.
 
-Confirm with the host before paying: dedicated/passthrough GPU, root SSH, NVIDIA
-driver ≥ 550 installable, and the exact vCPU/RAM/disk on the listing. Storage is
-wiped when the rental ends → checkpoints stream to HF continuously.
+**Pick: 1× RTX A5000 24 GB** (Ampere `sm_86`, runs the `cu126` pin; ~$0.27/h
+Secure). Fallbacks if A5000 has no capacity (it periodically drops off the
+listing): **RTX A4500 20 GB @ ~$0.19/h**, **RTX 3090 24 GB @ ~$0.22/h**, or
+**RTX 4000 Ada 20 GB @ ~$0.20/h**. Avoid all RTX 5090/5080/5070 (Blackwell
+`sm_120` fights the pin).
+
+### Pod configuration
+
+| Field | Value |
+|---|---|
+| GPU | RTX A5000 24 GB (fallback A4500 / 3090) |
+| Cloud type | Secure Cloud |
+| Template | RunPod PyTorch 2.8.0 — **CUDA 12.8** (not 13.0; matches the `cu126` major) |
+| Container disk | 40 GB — image ~12 GB + data 17 GB + venv 6.8 GB. Use `uv sync --no-cache` (the uv wheel cache alone is 7 GB and would overflow) |
+| Expose HTTP ports | 8888 (Jupyter), 6006 (TensorBoard) |
+| Expose TCP port | 22 (enables full SSH + scp/sftp) |
+| Env vars | `WANDB_API_KEY`, `HF_TOKEN` (`hub_utils.py:15` accepts either) |
+| SSH key | add `~/.ssh/id_ed25519.pub` to RunPod account → SSH Public Keys |
+
+### Setup (SSH over exposed TCP)
+
+```bash
+ssh root@<pod-ip> -p <ssh-port> -i ~/.ssh/id_ed25519
+
+curl -LsSf https://astral.sh/uv/install.sh | sh && source ~/.bashrc
+git clone https://github.com/LakoreAI/Research_AnomalySoundDetection.git
+cd Research_AnomalySoundDetection
+uv sync --no-cache --extra wandb --extra hub && uv run pytest
+
+# private HF data mirrors (faster than Zenodo; see hf-dataset-fast-resume skill)
+uv run python -c "
+from huggingface_hub import snapshot_download
+for local, repo in [('data/raw','LakoreAI/stgram-mfn-dcase2020-dev'),
+                    ('data/raw_eval','LakoreAI/stgram-mfn-dcase2020-eval')]:
+    snapshot_download(repo_id=repo, repo_type='dataset', local_dir=local, max_workers=16)
+"
+uv run python scripts/data/prepare_data.py --root data/raw --check
+```
+
+### Training run
+
+Same recipe as the Ckey block below (24 GB → no grad accumulation). Run inside
+`tmux`; `--hf_push_repo` survives pod termination.
+
+```bash
+uv run python scripts/training/train.py --config configs/train_t4_long.yaml \
+  --epochs 60 --add_root data/raw_eval \
+  --batch_size 128 --accum_steps 1 --num_workers 8 --pin_memory --amp \
+  --hf_push_repo LakoreAI/stgram-mfn-runpod-a5000
+```
+
+Cost at $0.27/h: 60-epoch ≈ $0.15–0.20, 300-epoch ≈ $0.60, full matrix ≈ $2–8.
+
+## Ckey.vn — chosen rental (2026-09-18) · SUPERSEDED
+
+Live listing checked against the workload profile above; priced in VND/h, ordered
+by value. **Pick: Ckey GPU3 listing `106600`** (start ≈ 6,563 VND/h ≈ $0.25/h —
+cheapest machine that clears every minimum; 24 GB holds reference batch 128 in
+one pass):
+
+| Spec | Value |
+|---|---|
+| GPU | **1× RTX 3090 24 GB** (Ampere `sm_86`; runs the `cu126` pin) |
+| CPU / RAM | Intel i5-14400F, 8c/16t / 64 GB |
+| Disk / Net | 378 GB NVMe (2,894 MB/s) / 452↓·386↑ Mbps |
+| Driver | CUDA max 13.0 (≥ 12.x needed for `cu126`) |
+| Uptime / max rent | 99.99% / 1,440 h |
+| Price | 6,563 VND/h · 157,505 VND/day |
+
+Fallback / speed pick: listing `50256` — 1× RTX 4090 24 GB (Ryzen 9 7950X
+16c/32t, 32 GB, 353 GB, 15,313 VND/h) for the faithful 300-epoch gate.
+**Avoid:** all RTX 5090/5080/5070 (Blackwell `sm_120` fights the `cu126` pin),
+P40/V100/P2000 (no tensor cores → no AMP), <16 GB cards, and explicitly-Community
+hosts when a bare-metal box exists.
+
+### Order settings (page `/thanh-toan-gpu3/106600`)
+
+- Duration: **24 h** to start (renew before expiry — data is wiped on
+  expiry/rebuild).
+- OS: **Ubuntu 22.04** (24.04 fallback) with the NVIDIA driver preinstalled.
+- Access: **root SSH**.
+- Port-forward (optional): **8888** Jupyter, **6006** TensorBoard. W&B needs no
+  inbound.
+
+### Machine setup (root SSH)
+
+```bash
+apt-get update && apt-get install -y git curl
+curl -LsSf https://astral.sh/uv/install.sh | sh && source ~/.bashrc
+nvidia-smi                              # confirm RTX 3090 + driver
+
+git clone <repo-url> && cd Research_AnomalySoundDetection
+uv sync --extra wandb --extra hub       # torch cu126 wheels
+uv run pytest
+
+# DCASE 2020 dev + eval (or restore from the HF dataset copy)
+uv run python scripts/data/download_data.py --dataset dcase2020      --dest data/raw
+uv run python scripts/data/download_data.py --dataset dcase2020-eval --dest data/raw_eval
+uv run python scripts/data/prepare_data.py --root data/raw --check
+```
+
+### Training run (24 GB → no grad accumulation)
+
+`configs/train.yaml` is sized for the 4 GB P2000 (batch 16 × accum 8). On the
+3090, override: batch 128 ≈ 12 GB VRAM, effective batch 128 = reference.
+
+```bash
+# 60-epoch trajectory (fast path)
+uv run python scripts/training/train.py --config configs/train_t4_long.yaml \
+  --epochs 60 --add_root data/raw_eval \
+  --batch_size 128 --accum_steps 1 --num_workers 8 --pin_memory --amp \
+  --hf_push_repo LakoreAI/stgram-mfn-rtx3090
+
+# faithful 300-epoch gate
+uv run python scripts/training/train.py --config configs/train.yaml \
+  --add_root data/raw_eval \
+  --batch_size 128 --accum_steps 1 --num_workers 8 --pin_memory --amp \
+  --hf_push_repo LakoreAI/stgram-mfn-rtx3090
+```
+
+`--amp` activates tensor cores (`src/pipelines/config.py:40`,
+`src/pipelines/train.py:304`). `--hf_push_repo` streams `best.pt` + `epoch_N.pt`
+to HF every N epochs and auto-resumes on startup
+(`src/pipelines/train.py:350`) — mandatory because Ckey wipes disk on
+expiry/rebuild.
 
 ## Budget & expected wall-clock
 
@@ -79,7 +200,9 @@ wiped when the rental ends → checkpoints stream to HF continuously.
 | RTX 4090 + AMP | ~1–2 h | ~20–30 min |
 | RTX 3090 + AMP | ~2–3 h | ~30–45 min |
 
-At 4090 market rates the full 2×3 matrix is roughly **$5–15 all-in**.
+At 4090 market rates the full 2×3 matrix is roughly **$5–15 all-in**. At the
+chosen listing `106600` (~$0.25/h) the same matrix is ≈ **$3–5**; tomorrow's
+first 60-epoch run is ≈ **$1**.
 
 ## Fidelity caveat
 

@@ -50,6 +50,12 @@ class TrainingConfig:
     val_fraction: float = 0.0
     seed: int = 42
 
+    # Optional STgramMFNConfig architecture overrides, for the Stage 8 size
+    # ladder, e.g. {"c_dim": 64, "n_mels": 64, "embed_dim": 64}. Keys must be
+    # STgramMFNConfig fields; c_dim/n_mels and win/hop are coupled (see
+    # src/config.py).
+    arch: Optional[dict] = None
+
     # --- callbacks ---
     # None (or {"type": "none"}) disables LR scheduling. See
     # src/callbacks/lr_scheduler.py.
@@ -64,12 +70,14 @@ class TrainingConfig:
     # None (or {"enabled": false}) disables W&B logging.
     wandb: Optional[dict] = None
 
-    # Optional incremental checkpoint push to Hugging Face Hub (requires the
-    # `hub` extra). Fails soft — a push error never kills training. Enables
-    # auto-resume after a Colab VM reclaim:
-    #   {"enabled": true, "repo_id": "LakoreAI/stgram-mfn-t4", "every_epochs": 5}
+    # Optional checkpoint push to Hugging Face Hub (requires the `hub` extra).
+    # Fails soft — a push error never kills training.
+    #   {"enabled": true, "repo_id": "LakoreAI/stgram-mfn-lean"}
+    # Default policy is best-only: `best.pt` is pushed whenever the monitored
+    # metric improves, plus once at run end; periodic `epoch_*.pt` files stay
+    # local. Set `"push_epochs": true` to also push epoch checkpoints.
     # On startup, if `resume_from` is unset and this is enabled, the run's
-    # checkpoints are pulled from the repo and the latest epoch is resumed.
+    # checkpoints are pulled from the repo and resumed.
     hf_push: Optional[dict] = None
 
     resume_from: Optional[str] = None
