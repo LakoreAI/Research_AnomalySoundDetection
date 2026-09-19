@@ -47,8 +47,18 @@ percent; mAUC is the worst-case AUC across machine units.
 | STgram-MFN, small tier | 309,247 | 90.04 | — | — | — |
 | STgram-MFN, large tier | 2,801,087 | 91.63 | — | — | — |
 
-Edge latency (INT8, Qualcomm AI Hub, single inference): Galaxy S25 5.75 ms,
-S24 7.00 ms, S21 7.76 ms, S23 9.85 ms, QCS8550 IoT 9.87 ms.
+Edge latency (INT8 TFLite, Qualcomm AI Hub, single inference, ms):
+
+| Device | STgram-MFN | mn01 |
+|---|---|---|
+| Galaxy S25 | **5.75** | 33.47 |
+| Galaxy S24 | 7.00 | 36.77 |
+| Galaxy S21 | 7.76 | 7.92 |
+| Galaxy S23 | 9.85 | 49.83 |
+| QCS8550 (IoT) | 9.87 | 50.08 |
+
+The smaller `mn01` is **3–5× slower on four of five devices** — parameter count
+predicts neither robustness nor NPU latency.
 
 Three findings worth remembering:
 
