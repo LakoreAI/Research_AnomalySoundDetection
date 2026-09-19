@@ -27,16 +27,32 @@ import json
 import sys
 from pathlib import Path
 
+import torch
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from src.config import STgramMFNConfig  # noqa: E402
+from src.config import MN01Config, STgramMFNConfig  # noqa: E402
+from src.modules.mn01 import Mn01MelFrontend  # noqa: E402
 from src.utils.io_utils import load_env  # noqa: E402
 
 
-def _input_specs(cfg: STgramMFNConfig) -> dict:
+def _input_specs(backbone: str = "stgram") -> dict:
     """AI Hub requires explicit (shape, dtype) and concrete (non-dynamic)
-    dims; `label` is int64 in the exported graph."""
+    dims; `label` is int64 in the exported graphs."""
+    if backbone == "mn01":
+        # mn01 mel scorer takes x_mel (B, 1, n_mels, n_frames). Frames come from
+        # the frontend itself (pre-emphasis drops one sample: 1000, not 1001).
+        cfg = MN01Config()
+        with torch.no_grad():
+            mel = Mn01MelFrontend(cfg).eval()(
+                torch.randn(1, int(cfg.secs * cfg.sample_rate))
+            )
+        return {
+            "x_mel": ((1, 1, mel.shape[1], mel.shape[2]), "float32"),
+            "label": ((1,), "int64"),
+        }
+    cfg = STgramMFNConfig()
     clip_samples = int(cfg.secs * cfg.sample_rate)
     return {
         "x_wav": ((1, clip_samples), "float32"),
@@ -116,6 +132,12 @@ def main() -> None:
         help="device names; default = every device the account can access",
     )
     parser.add_argument(
+        "--backbone",
+        choices=["stgram", "mn01"],
+        default="stgram",
+        help="input contract of the ONNX graph",
+    )
+    parser.add_argument(
         "--out", type=Path, default=REPO_ROOT / "export" / "qai_hub_results.json"
     )
     args = parser.parse_args()
@@ -125,7 +147,7 @@ def main() -> None:
         raise FileNotFoundError(args.onnx)
 
     hub, client = _client()
-    specs = _input_specs(STgramMFNConfig())
+    specs = _input_specs(args.backbone)
 
     if args.devices:
         devices = [hub.Device(name) for name in args.devices]
