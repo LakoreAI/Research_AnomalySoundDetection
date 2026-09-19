@@ -28,8 +28,8 @@ dataset.
 | 7 | STgram-MFN model (TgramNet + Sgram + MobileFaceNet + ArcFace) | [x] |
 | 8 | Data pipeline (MIMII/DCASE layout, download + prepare scripts) | [x] |
 | 9 | Train/eval/infer pipelines + callbacks | [x] |
-| 10 | Download DCASE 2020 dev + eval data | [ ] |
-| 11 | Reproduce published STgram-MFN AUC/pAUC (DCASE 2020) | [ ] |
+| 10 | Download DCASE 2020 dev + eval data | [x] |
+| 11 | Reproduce published STgram-MFN AUC/pAUC (DCASE 2020) | [x] |
 | 12 | Baselines: LogMel-MFN / Tgram-MFN ablations | [ ] |
 
 **Go/No-Go:** reproduced average AUC within ~2 points of the published 92.36
@@ -42,8 +42,8 @@ backbone-swap claim until it is credible).
 | # | Task | Status |
 |---|---|---|
 | 13 | mn01 (EfficientAT) wrapper; 16k/32k + mel mismatch resolved (`mn01_as`, 32 kHz own frontend) | [~] |
-| 14 | Same MobileFaceNet+ArcFace head on mn01 embeddings | [ ] |
-| 15 | FP32 head-to-head: STgram-MFN vs mn01 (accuracy + params) | [ ] |
+| 14 | Same MobileFaceNet+ArcFace head on mn01 embeddings | [~] |
+| 15 | FP32 head-to-head: STgram-MFN vs mn01 (accuracy + params) | [~] |
 
 **Go/No-Go:** mn01 within a reportable margin of STgram-MFN in FP32, or a clear
 accuracy/efficiency tradeoff. Fallback: mn01 as a negative result (still a
